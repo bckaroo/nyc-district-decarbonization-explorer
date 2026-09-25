@@ -180,6 +180,62 @@ def create_app(
             raise HTTPException(status_code=404, detail="property_id not found in snapshot")
         return to_detail(store.by_id[property_id])
 
+    # ---- citywide ParcelStore (MapPLUTO + citywide LL84 join) -----------------
+    from .citywide_parcels import ParcelStore
+
+    _citywide_store: ParcelStore | None = None
+
+    def _parcel_store() -> ParcelStore:
+        nonlocal _citywide_store
+        if _citywide_store is None:
+            _citywide_store = ParcelStore()
+        return _citywide_store
+
+    @app.get("/api/parcels", include_in_schema=True)
+    def api_parcels(
+        min_x: float = Query(..., ge=-180, le=180),
+        min_y: float = Query(..., ge=-90, le=90),
+        max_x: float = Query(..., ge=-180, le=180),
+        max_y: float = Query(..., ge=-90, le=90),
+        limit: int = Query(default=5000, ge=1, le=20000),
+    ):
+        if min_x >= max_x or min_y >= max_y:
+            raise HTTPException(status_code=400, detail="bbox min must be < max")
+        try:
+            store = _parcel_store()
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"citywide parcel store unavailable: {e}")
+        try:
+            feats, total, truncated = store.query_bbox(min_x, min_y, max_x, max_y, limit)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        return {
+            "type": "FeatureCollection",
+            "bbox": [min_x, min_y, max_x, max_y],
+            "returned": len(feats),
+            "matched": total,
+            "truncated": truncated,
+            "features": feats,
+        }
+
+    @app.get("/api/parcels/coverage", include_in_schema=True)
+    def api_parcels_coverage():
+        try:
+            return _parcel_store().coverage()
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+
+    @app.get("/api/parcels/{bbl}", include_in_schema=True)
+    def api_parcel_detail(bbl: str):
+        store = _parcel_store()
+        try:
+            rec = store.by_bbl_record(bbl)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        if rec is None:
+            raise HTTPException(status_code=404, detail=f"no LL84 record joined for BBL {bbl}")
+        return rec
+
     # ---- building footprints with joined energy attributes --------------------
     _footprints_path = Path(
         os.environ.get(

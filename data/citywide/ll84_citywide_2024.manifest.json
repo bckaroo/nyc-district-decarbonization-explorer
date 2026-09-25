@@ -1,0 +1,57 @@
+{
+  "captured_utc": "2026-09-25T10:37:57Z",
+  "count_query_url": "https://data.cityofnewyork.us/resource/5zyy-y8am.json?%24select=count%28%2A%29+as+n&%24where=report_year+%3D+%272024%27",
+  "fetch_log": {
+    "pages": 4,
+    "requests": [
+      {
+        "rows": 10000,
+        "status": 200,
+        "url_sha": "/resource/5zyy-y8am.json[?]"
+      },
+      {
+        "rows": 10000,
+        "status": 200,
+        "url_sha": "/resource/5zyy-y8am.json[?]"
+      },
+      {
+        "rows": 10000,
+        "status": 200,
+        "url_sha": "/resource/5zyy-y8am.json[?]"
+      },
+      {
+        "rows": 9090,
+        "status": 200,
+        "url_sha": "/resource/5zyy-y8am.json[?]"
+      }
+    ],
+    "rows": 39090
+  },
+  "raw_file": "/mnt/e/OC_Projects/projects/signalnyc/data/citywide/ll84_citywide_2024.raw.jsonl",
+  "rows": 39090,
+  "selected_fields": [
+    "property_id",
+    "parent_property_id",
+    "report_year",
+    "year_ending",
+    "nyc_borough_block_and_lot",
+    "nyc_building_identification",
+    "address_1",
+    "postal_code",
+    "latitude",
+    "longitude",
+    "property_gfa_self_reported",
+    "site_eui_kbtu_ft",
+    "weather_normalized_site_eui",
+    "direct_ghg_emissions_metric",
+    "direct_ghg_emissions_intensity",
+    "total_location_based_ghg",
+    "electricity_use_grid_purchase",
+    "natural_gas_use_kbtu",
+    "water_use_all_water_sources"
+  ],
+  "sha256": "a6d70bb48c49b172c8a737d1316a2d4292d4d3bf3a7ef60e3235f58503a52278",
+  "slice": "ll84_citywide_2024",
+  "socrata_id": "5zyy-y8am",
+  "where": "report_year = '2024'"
+}

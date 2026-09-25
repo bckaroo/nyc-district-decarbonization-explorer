@@ -2,7 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import type { StyleSpecification } from "maplibre-gl";
 import type { PropertySummary } from "./api";
+import {
+  OBSERVED_THEMES,
+  UNAVAILABLE_THEMES,
+  colorExpr,
+  getTheme,
+  legendSwatches,
+  opacityExpr,
+  type ThemeDef,
+} from "./symbology";
 import "maplibre-gl/dist/maplibre-gl.css";
+
+const DEFAULT_THEME_ID = "site_eui_kbtu_ft";
 
 // Public raster demo tiles: remote dependency, documented in README. If tiles
 // fail the map shows an error banner and the table stays fully functional.
@@ -23,35 +34,19 @@ const PUBLIC_STYLE: StyleSpecification = {
   ],
 };
 
-// EUI color ramp (kBtu/ft2·yr): teal (low) -> green -> yellow -> orange -> red
-// (high). Features with a null/missing EUI are drawn gray, not dropped: the
-// numeric ramp's ["to-number", ...] input would error on null.
-function euiColorExpr(): unknown {
-  return [
-    "case",
-    ["!", ["has", "site_eui_kbtu_ft"]],
-    "#94a3b8",
-    [
-      "interpolate",
-      ["linear"],
-      ["to-number", ["get", "site_eui_kbtu_ft"]],
-      0, "#22d3ee",
-      60, "#34d399",
-      100, "#fbbf24",
-      160, "#fb923c",
-      240, "#f87171",
-    ],
-  ];
+// Footprint fill color comes from the switcher's active theme (see symbology.ts).
+// Paint expressions are re-applied on theme change in a separate effect below.
+function themeFillColor(theme: ThemeDef): unknown {
+  return colorExpr(theme);
 }
 
 const FP_HIGHLIGHT = (selectedId: string | null): unknown => [
   "case",
   ["==", ["get", "pid"], selectedId ?? "__none__"],
   0.92,
-  ["!", ["has", "site_eui_kbtu_ft"]],
-  0.12,
   0.55,
 ];
+void FP_HIGHLIGHT;
 
 interface Props {
   properties: PropertySummary[];
@@ -63,13 +58,29 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   // Latest props, so async layer-attachment uses current data (stale-closure fix)
-  const propsRef = useRef<{ properties: PropertySummary[]; selectedId: string | null }>({
-    properties,
-    selectedId,
-  });
-  propsRef.current = { properties, selectedId };
+  const propsRef = useRef<{
+    properties: PropertySummary[];
+    selectedId: string | null;
+    theme: ThemeDef;
+  }>({ properties, selectedId, theme: OBSERVED_THEMES[0] });
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"points" | "footprints">("points");
+  const [themeId, setThemeId] = useState<string>(DEFAULT_THEME_ID);
+  const theme = getTheme(themeId) ?? OBSERVED_THEMES[0];
+  propsRef.current = { properties, selectedId, theme };
+
+  // Reapply the active theme's paint expressions when the user switches layers.
+  // Guarded on layer existence so it's a no-op until footprints have attached.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.getLayer("fp-fill")) return;
+    map.setPaintProperty("fp-fill", "fill-color", colorExpr(theme) as never);
+    map.setPaintProperty(
+      "fp-fill",
+      "fill-opacity",
+      opacityExpr(theme, propsRef.current.selectedId) as never
+    );
+  }, [themeId, theme]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -125,8 +136,11 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
               type: "fill",
               source: "footprints",
               paint: {
-                "fill-color": euiColorExpr() as never,
-                "fill-opacity": FP_HIGHLIGHT(propsRef.current.selectedId) as never,
+                "fill-color": themeFillColor(propsRef.current.theme) as never,
+                "fill-opacity": opacityExpr(
+                  propsRef.current.theme,
+                  propsRef.current.selectedId
+                ) as never,
               },
             });
             map.addLayer({
@@ -245,7 +259,7 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded() || !selectedId) return;
     if (map.getLayer("fp-fill")) {
-      map.setPaintProperty("fp-fill", "fill-opacity", FP_HIGHLIGHT(selectedId) as never);
+      map.setPaintProperty("fp-fill", "fill-opacity", opacityExpr(theme, selectedId) as never);
     }
     if (map.getLayer("prop-points")) {
       map.setPaintProperty("prop-points", "circle-stroke-color", [
@@ -275,9 +289,55 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
     <div className="map-wrap">
       {error && <div className="map-fallback">{error}</div>}
       {mode === "footprints" && !error && (
-        <div className="map-badge">
-          <span className="swatch" style={{ background: "linear-gradient(90deg,#22d3ee,#34d399,#fbbf24,#fb923c,#f87171)" }} />
-          Building footprints · Site EUI (kBtu/ft²·yr)
+        <div className="map-symbology-panel" data-testid="map-symbology-panel">
+          <label className="symbology-select-label" htmlFor="symbology-select">
+            Color footprints by
+          </label>
+          <select
+            id="symbology-select"
+            data-testid="symbology-select"
+            value={themeId}
+            onChange={(e) => setThemeId(e.target.value)}
+          >
+            <optgroup label="Observed (LL84 reported)">
+              {OBSERVED_THEMES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label} — {t.units}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Modeled (not yet available)">
+              {UNAVAILABLE_THEMES.map((u) => (
+                <option key={u.id} value={u.id} disabled title={u.reason}>
+                  {u.label} — requires modeled end-use data
+                </option>
+              ))}
+            </optgroup>
+          </select>
+          <div className="symbology-legend" data-testid="symbology-legend">
+            <span className="legend-title">
+              {theme.label} <span className="legend-units">({theme.units})</span>
+            </span>
+            <div className="legend-row">
+              {legendSwatches(theme).map((s) => (
+                <span key={s.text} className="legend-stop">
+                  <span className="swatch" style={{ background: s.color }} />
+                  {s.text}
+                </span>
+              ))}
+              <span className="legend-stop">
+                <span className="swatch" style={{ background: theme.nullGray }} />
+                no data
+              </span>
+            </div>
+          </div>
+          <div className="symbology-grain">
+            {theme.grain}
+            {theme.disaggregated
+              ? " · multi-building property totals already area-weighted to each footprint"
+              : ""}
+            {theme.weatherNormalized ? " · weather-normalized" : ""}
+          </div>
         </div>
       )}
       <div ref={containerRef} className="map-canvas" data-testid="map" />

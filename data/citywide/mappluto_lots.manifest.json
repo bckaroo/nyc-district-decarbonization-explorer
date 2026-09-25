@@ -1,0 +1,12 @@
+{
+  "captured_utc": "2026-09-25T10:48:37Z",
+  "source": "https://services5.arcgis.com/GfwWNkhOj9bNBqoJ/arcgis/rest/services/MAPPLUTO/FeatureServer/0/query",
+  "total_source_count": 856687,
+  "max_record_count": 2000,
+  "out_fields": "BBL,Borough,Block,Lot,LotArea,BldgArea,BuiltFAR,NumBldgs,NumFloors,YearBuilt,Latitude,Longitude,ZoneDist1,ZoneDist2,LandUse,BldgClass",
+  "flushed_rows": 856687,
+  "inserted_this_run": 856687,
+  "next_offset_after_run": 856687,
+  "db": "/mnt/e/OC_Projects/projects/signalnyc/data/citywide/mappluto_lots.sqlite",
+  "note": "complete"
+}

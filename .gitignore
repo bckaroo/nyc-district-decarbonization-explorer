@@ -8,3 +8,9 @@ build/
 *.db-shm
 *.db-wal
 .DS_Store
+data/citywide/*.sqlite*
+
+# citywide SQLite store (served from data/, not git — 476 MB)
+data/citywide/mappluto_lots.sqlite
+data/citywide/mappluto_lots.sqlite-wal
+data/citywide/mappluto_lots.sqlite-shm

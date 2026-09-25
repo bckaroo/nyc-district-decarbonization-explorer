@@ -282,3 +282,67 @@ thead th:focus-visible { outline-offset: -2px; }
   height: 8px;
   border-radius: 4px;
 }
+
+/* Symbology switcher panel (DEV-157) */
+.map-symbology-panel {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 10;
+  max-width: min(92vw, 420px);
+  background: rgba(11,14,20,.88);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.7rem;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  backdrop-filter: blur(4px);
+}
+.map-symbology-panel label.symbology-select-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--faint);
+}
+.map-symbology-panel select {
+  background: #141924;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  padding: 3px 6px;
+  max-width: 100%;
+}
+.symbology-legend { display: flex; flex-direction: column; gap: 3px; }
+.symbology-legend .legend-title {
+  font-weight: 600;
+  color: var(--muted);
+}
+.symbology-legend .legend-units { color: var(--faint); font-weight: 400; }
+.symbology-legend .legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+}
+.symbology-legend .legend-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.symbology-legend .swatch {
+  display: inline-block;
+  width: 14px;
+  height: 8px;
+  border-radius: 2px;
+  border: 1px solid rgba(255,255,255,.14);
+}
+.symbology-grain {
+  font-size: 0.62rem;
+  line-height: 1.35;
+  color: var(--faint);
+}
