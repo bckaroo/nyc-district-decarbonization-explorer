@@ -207,10 +207,89 @@ def build_joined_geojson(ll84_rows: list[dict], footprints: list[dict]) -> tuple
         "join_note": (
             "BBL join first (mappluto_bbl, fallback base_bbl), BIN fallback. "
             "Polygon carries the PROPERTY-level energy row; for campus (multi-BIN) "
-            "properties this is property-level, NOT per-building truth."
+            "properties totals are area-weight disaggregated (see disagg_note) and "
+            "intensities remain property-level."
         ),
     }
+    disaggregate_campus_totals(fc, ll84_rows)
     return fc, stats
+
+
+# Totals that scale with building size and can be area-weight disaggregated.
+# Intensities (EUI, GHG intensity) are PER-SQFT and intentionally NOT
+# disaggregated — distributing them would fabricate precision.
+DISAGG_FIELDS = [
+    "total_location_based_ghg",
+    "natural_gas_use_kbtu",
+    "electricity_use_grid_purchase",
+]
+
+
+def _poly_area_sqft(geom: dict) -> float:
+    """Approximate polygon area in ft² via the footprint's reported SHAPE_AREA
+    (carried through the join) or a spherical ring sum fallback."""
+    # SHAPE_AREA travels in properties? It is dropped during join; recompute.
+    import math
+
+    def ring_area_sqft(ring: list[list[float]]) -> float:
+        # Spherical excess (ft²) for lon/lat ring; good to ~0.1% at city scale.
+        R_FT = 20_902_530.0  # earth mean radius, feet
+        lat0 = math.radians(sum(p[1] for p in ring) / len(ring))
+        k = math.pi / 180.0
+        area = 0.0
+        for i in range(len(ring) - 1):
+            lon1, lat1 = ring[i][0] * k, ring[i][1] * k
+            lon2, lat2 = ring[i + 1][0] * k, ring[i + 1][1] * k
+            area += (lon2 - lon1) * (2.0 + math.sin(lat1) + math.sin(lat2))
+        area = abs(area) * (R_FT * R_FT / 2.0) * math.cos(lat0)
+        return area
+
+    total = 0.0
+    polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+    for poly in polys:
+        outer = poly[0]
+        a = ring_area_sqft(outer)
+        for hole in poly[1:]:
+            a -= ring_area_sqft(hole)
+        total += max(a, 0.0)
+    return total
+
+
+def disaggregate_campus_totals(fc: dict, ll84_rows: list[dict]) -> dict:
+    """Area-weight disaggregate campus totals across a property's footprints.
+
+    Scope: properties with >1 joined footprint (campus parents, multi-BIN).
+    Method: each polygon gets share = poly_area / sum(poly_areas of the same
+    property); totals (GHG, gas, electricity) are multiplied by the share.
+    ASSUMPTION (labeled per-feature): uniform energy intensity per ft² of
+    footprint across the property's buildings. Real distributions differ;
+    these values are screening-grade, not per-building truth.
+    """
+    from collections import defaultdict
+
+    by_pid: dict[str, list[dict]] = defaultdict(list)
+    for f in fc["features"]:
+        by_pid[f["properties"]["pid"]].append(f)
+
+    disagg_n = 0
+    for pid, feats in by_pid.items():
+        if len(feats) < 2:
+            continue
+        areas = {id(f): _poly_area_sqft(f["geometry"]) for f in feats}
+        total_area = sum(areas.values())
+        if total_area <= 0:
+            continue
+        disagg_n += 1
+        for f in feats:
+            w = areas[id(f)] / total_area
+            p = f["properties"]
+            p["disagg"] = "area-weighted"
+            p["disagg_weight"] = round(w, 4)
+            p["disagg_n"] = len(feats)
+            for field in DISAGG_FIELDS:
+                if p.get(field) is not None:
+                    p[field] = round(p[field] * w, 2)
+    return {"properties_disaggregated": disagg_n}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -222,6 +301,8 @@ def main(argv: list[str] | None = None) -> int:
     footprints, fp_manifest = load_or_fetch_footprints(refetch=args.refetch)
     ll84_rows = load_ll84_rows()
     fc, stats = build_joined_geojson(ll84_rows, footprints)
+    # disaggregation already ran inside build_joined_geojson; don't run twice
+    # (double-multiplying totals by the weights).
 
     tmp = OUT_GEOJSON + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:

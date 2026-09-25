@@ -331,6 +331,25 @@ def main(argv: list[str] | None = None) -> None:
           f"distinct_bins={dc['distinct_bins']} "
           f"orphans={profile['parent_child_flags']['orphan_child_count']}")
 
+    # ---- footprints layer (polygon join) — chained so one command rebuilds all
+    if args.online:
+        # LL84 snapshot may have changed; refresh footprints too for consistency.
+        _run_footprints(["--refetch"])
+    else:
+        _run_footprints([])
+
+
+def _run_footprints(extra_args: list[str]) -> None:
+    """Invoke build_footprints.py as a subprocess; failure is reported, not fatal
+    (the profile/product docs remain valid without the map layer)."""
+    import subprocess
+    script = os.path.join(REPO, "scripts", "build_footprints.py")
+    try:
+        subprocess.run([sys.executable, script, *extra_args], check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"WARN: build_footprints.py exited {e.returncode}; "
+              f"map layer may be stale — rerun manually.")
+
 
 SNAP_SLICE_NAME = SNAP_SLICE  # alias expected by tests/constant naming
 

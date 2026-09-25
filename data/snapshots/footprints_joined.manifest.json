@@ -1,14 +1,14 @@
 {
-  "generated_utc": "2026-09-25T07:05:20Z",
+  "generated_utc": "2026-09-25T07:27:02Z",
   "geojson_file": "/mnt/e/OC_Projects/projects/signalnyc/data/snapshots/footprints_joined.geojson",
-  "sha256": "325275c57c1e148e3f632c5d66d92b23be4a96efc9bf7da9522e1ae6ab5c8b3c",
+  "sha256": "5d809a090d62dd4a1a388fc38e1644ad81718d6fc00b41bc198ebd01b06b2e38",
   "features": 932,
   "stats": {
     "footprints_total": 1817,
     "joined_features": 932,
     "unmatched_no_energy_data": 885,
     "skipped_no_geometry": 0,
-    "join_note": "BBL join first (mappluto_bbl, fallback base_bbl), BIN fallback. Polygon carries the PROPERTY-level energy row; for campus (multi-BIN) properties this is property-level, NOT per-building truth."
+    "join_note": "BBL join first (mappluto_bbl, fallback base_bbl), BIN fallback. Polygon carries the PROPERTY-level energy row; for campus (multi-BIN) properties totals are area-weight disaggregated (see disagg_note) and intensities remain property-level."
   },
   "footprint_snapshot_manifest": {
     "captured_utc": "2026-09-25T07:05:20Z",
