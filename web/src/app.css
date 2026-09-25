@@ -113,11 +113,20 @@ html, body, #root {
   gap: 0;
 }
 
+/* Three rows: map, an always-visible collapse bar, then the table.
+   The bar must be its OWN grid row rather than the first child of .table-pane.
+   It was inside the pane, so collapsing the pane to 0 height clipped the very
+   control needed to expand it again — hiding the table was a one-way trip. */
 .work-area {
   display: grid;
-  grid-template-rows: minmax(240px, 52%) minmax(160px, 1fr);
+  grid-template-rows: minmax(240px, 52%) auto minmax(160px, 1fr);
   min-width: 0;
   min-height: 0;
+}
+
+/* Map takes everything the table gave up; the bar keeps its natural height. */
+.work-area.table-hidden {
+  grid-template-rows: minmax(240px, 1fr) auto 0;
 }
 
 /* ---------- Map pane (top) ---------- */
@@ -125,12 +134,6 @@ html, body, #root {
   position: relative;
   min-height: 0;
   border-bottom: 1px solid var(--border-soft);
-}
-
-/* Map expands to fill the work area when the table is collapsed: the grid's
-   first row takes everything and the table row is removed from the template. */
-.work-area.table-hidden {
-  grid-template-rows: minmax(240px, 1fr) 0;
 }
 
 /* Fullscreen map. Applied to MapPanel's own wrapper so the toggle needs no prop
@@ -169,20 +172,23 @@ html, body, #root {
   color: #e0f2fe;
 }
 
-/* Table collapse handle. Sits at the top edge of the table pane and is the
-   click target that hides/shows it. */
+/* Table collapse handle. Its own grid row directly above the table pane so it
+   stays visible and clickable when the pane is collapsed. */
 .table-collapse-bar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 8px;
-  padding: 4px 10px;
+  padding: 6px 10px;
   cursor: pointer;
   user-select: none;
-  background: var(--panel);
+  background: var(--panel-2);
+  border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border-soft);
   font-size: 0.72rem;
-  color: #9fb8c8;
+  font-weight: 600;
+  color: #a9c2d4;
 }
-.table-collapse-bar:hover { color: #e2e8f0; background: rgba(30,41,59,.6); }
+.table-collapse-bar:hover { color: #f1f5f9; background: rgba(51,65,85,.85); }
+.table-collapse-bar:focus-visible { outline: 2px solid #38bdf8; outline-offset: -2px; }
 .table-collapse-bar .chev { font-size: 0.8rem; }
 .table-collapsed-note { padding: 6px 10px; font-size: 0.72rem; color: #8ba3b5; }
 

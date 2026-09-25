@@ -276,34 +276,39 @@ export default function App() {
             />
           </div>
 
-          <div className="table-pane">
-            <div
-              className="table-collapse-bar"
-              data-testid="table-collapse-toggle"
-              role="button"
-              tabIndex={0}
-              aria-expanded={!tableHidden}
-              title={tableHidden ? "Show the properties table" : "Hide the table to expand the map"}
-              onClick={() => setTableHidden((v) => !v)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  setTableHidden((v) => !v);
-                }
-              }}
-            >
-              <span className="chev" aria-hidden="true">
-                {tableHidden ? "▸" : "▾"}
-              </span>
-              <span>
-                {tableHidden
-                  ? "Properties table hidden — click to show"
-                  : "Hide table (expand map)"}
-              </span>
-              <span className="chev" aria-hidden="true">
-                {tableHidden ? "▸" : "▾"}
-              </span>
-            </div>
+          {/* The collapse bar is its own grid child, NOT a child of
+              .table-pane: when the pane collapses to 0 height it would clip the
+              control needed to bring the table back, making hide a one-way trip. */}
+          <div
+            className="table-collapse-bar"
+            data-testid="table-collapse-toggle"
+            role="button"
+            tabIndex={0}
+            aria-expanded={!tableHidden}
+            aria-controls="properties-table-pane"
+            title={tableHidden ? "Show the properties table" : "Hide the table to expand the map"}
+            onClick={() => setTableHidden((v) => !v)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setTableHidden((v) => !v);
+              }
+            }}
+          >
+            <span className="chev" aria-hidden="true">
+              {tableHidden ? "▲" : "▼"}
+            </span>
+            <span>
+              {tableHidden
+                ? "Properties table hidden — click to show"
+                : "Hide table (expand map)"}
+            </span>
+            <span className="chev" aria-hidden="true">
+              {tableHidden ? "▲" : "▼"}
+            </span>
+          </div>
+
+          <div className="table-pane" id="properties-table-pane">
             <div className="pane-head">
               <h2>Properties</h2>
               <span className="pane-sub">
