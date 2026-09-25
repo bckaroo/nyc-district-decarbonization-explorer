@@ -298,11 +298,15 @@ export function themeBreaks(theme: ThemeDef): number[] {
  * outline-stroke hint (handled in MapPanel via line layer).
  */
 export function opacityExpr(theme: ThemeDef, selectedPid: string | null): unknown {
+  // Modeled themes carry the real key in decidingField (field is a sentinel);
+  // check value presence on the deciding property the same way color does.
+  const deciding = (theme as { decidingField?: string }).decidingField;
+  const valueKey = deciding ?? theme.field;
   return [
     "case",
     ["==", ["get", "pid"], selectedPid ?? "__none__"],
     0.92, // selected
-    ["!=", ["typeof", ["get", theme.field]], "number"],
+    ["!=", ["typeof", ["get", valueKey]], "number"],
     0.16, // null / no data — dimmed gray, NOT zero
     0.55, // normal
   ];

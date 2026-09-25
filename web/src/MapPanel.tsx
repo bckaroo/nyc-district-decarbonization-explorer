@@ -37,8 +37,11 @@ const PUBLIC_STYLE: StyleSpecification = {
 
 // Footprint fill color comes from the switcher's active theme (see symbology.ts).
 // Paint expressions are re-applied on theme change in a separate effect below.
+// Modeled themes carry the real property in decidingField (field is a sentinel);
+// route paint at the deciding property so the map reads actual feature data.
 function themeFillColor(theme: ThemeDef): unknown {
-  return colorExpr(theme);
+  const deciding = (theme as { decidingField?: string }).decidingField;
+  return colorExpr(deciding ? { ...theme, field: deciding } : theme);
 }
 
 const FP_HIGHLIGHT = (selectedId: string | null): unknown => [
