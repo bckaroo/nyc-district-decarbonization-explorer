@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sqlite3
 import time
 import urllib.parse
@@ -33,6 +34,54 @@ RESOURCE = "https://data.cityofnewyork.us/resource/64uk-42ks.json"
 SNAP_DEG = 0.0003
 MIN_LOTS = 3
 MIN_BLDG_SQFT = 100_000
+
+# Concurrent runs of this script both write OUT and MANIFEST, so whichever
+# finishes last silently wins — and since each writes both files separately, the
+# loser can leave a GeoJSON and a manifest that describe DIFFERENT data (a
+# manifest sha256 that does not match the file beside it). Two runs did exactly
+# that; one wrote an empty 45-byte file. The lock makes a second run refuse.
+LOCK = Path(
+    os.environ.get("SIGNALNYC_SCRATCH", "/home/abuck/.hermes/cache/scratch/signalnyc_build")
+) / "build_owner_clusters.lock"
+
+
+def acquire_lock() -> None:
+    LOCK.parent.mkdir(parents=True, exist_ok=True)
+    if LOCK.exists():
+        try:
+            other = int(LOCK.read_text().strip())
+        except ValueError:
+            other = None
+        if other and Path(f"/proc/{other}").exists():
+            raise SystemExit(
+                f"another build_owner_clusters is running (pid {other}); refusing "
+                f"to start a second one. Remove {LOCK} if that is stale."
+            )
+        print(f"  clearing stale lock (pid {other} gone)", flush=True)
+    LOCK.write_text(str(os.getpid()))
+
+
+def write_outputs(feats: list[dict], extra_meta: dict) -> None:
+    """Write the GeoJSON and its manifest together, manifest sha computed from
+    the EXACT bytes written, so the pair can never disagree."""
+    OUT.write_text(json.dumps({"type": "FeatureCollection", "features": feats}), encoding="utf-8")
+    sha = hashlib.sha256(OUT.read_bytes()).hexdigest()
+    meta = {
+        "source": "MapPLUTO ownername (Socrata 64uk-42ks) + local MapPLUTO lot polygons",
+        "definition": (
+            "Campus = contiguous lots sharing a NORMALIZED OWNER FAMILY. Owner "
+            "names are fragmented across single-lot LLCs, so families are matched "
+            "by explicit pattern table (see owner_patterns). Proxy only."
+        ),
+        "params": {"snap_deg": SNAP_DEG, "min_lots": MIN_LOTS, "min_bldg_sqft": MIN_BLDG_SQFT},
+        "owner_patterns": {fam: pats for fam, _l, _k, pats in OWNER_PATTERNS},
+        "campus_count": len(feats),
+        "geojson_bytes": OUT.stat().st_size,
+        "geojson_sha256": sha,
+        "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        **extra_meta,
+    }
+    MANIFEST.write_text(json.dumps(meta, indent=2), encoding="utf-8")
 
 # Owner family -> (label, kind, SQL LIKE patterns matched against ownername)
 # Kept as a small explicit table rather than fuzzy matching, so the rule set is
@@ -114,6 +163,7 @@ def fetch_owner(patterns: list[str]) -> list[tuple[str, str]]:
 
 
 def main() -> int:
+    acquire_lock()
     from shapely.geometry import shape
     from shapely.ops import unary_union
 
@@ -216,24 +266,17 @@ def main() -> int:
             })
 
     feats.sort(key=lambda f: -f["properties"]["bldg_area_sqft"])
-    OUT.write_text(json.dumps({"type": "FeatureCollection", "features": feats}), encoding="utf-8")
-
-    sha = hashlib.sha256(OUT.read_bytes()).hexdigest()
-    MANIFEST.write_text(json.dumps({
-        "source": "MapPLUTO ownername (Socrata 64uk-42ks) + local MapPLUTO lot polygons",
-        "definition": (
-            "Campus = contiguous lots sharing a NORMALIZED OWNER FAMILY. Owner "
-            "names are fragmented across single-lot LLCs, so families are matched "
-            "by explicit pattern table (see owner_patterns). Proxy only."
-        ),
-        "params": {"snap_deg": SNAP_DEG, "min_lots": MIN_LOTS, "min_bldg_sqft": MIN_BLDG_SQFT},
-        "owner_patterns": {fam: pats for fam, _l, _k, pats in OWNER_PATTERNS},
-        "target_bbls": len(wanted),
-        "joined_bbls": found,
-        "campus_count": len(feats),
-        "geojson_sha256": sha,
-        "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    }, indent=2), encoding="utf-8")
+    # Never publish an empty cluster file: an empty result here means a
+    # pattern/join problem, not that no owners exist. Two earlier runs wrote a
+    # 45-byte and an empty file that looked like success at the shell.
+    if not feats:
+        print(
+            f"ERROR: derived 0 clusters from {found:,} joined lots — refusing to "
+            "write an empty owner-clusters file.",
+            flush=True,
+        )
+        return 1
+    write_outputs(feats, {"target_bbls": len(wanted), "joined_bbls": found})
 
     print(f"\nwrote {OUT} ({OUT.stat().st_size/1024:.0f} KB)")
     print(f"  clusters: {len(feats)}")
@@ -241,7 +284,7 @@ def main() -> int:
         p = f["properties"]
         print(f"    {p['owner_key']:16s} {p['owner_kind']:11s} lots={p['lot_count']:3d} "
               f"{p['bldg_area_sqft']:>12,} ft²  {p['owner_label'][:38]}")
-    print(f"  sha256: {sha}")
+    print(f"  sha256: {json.loads(MANIFEST.read_text())['geojson_sha256']}")
     print(f"  {time.time()-t0:.1f}s")
     return 0
 
