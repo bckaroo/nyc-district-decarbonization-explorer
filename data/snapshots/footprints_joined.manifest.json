@@ -1,0 +1,35 @@
+{
+  "generated_utc": "2026-09-25T07:05:20Z",
+  "geojson_file": "/mnt/e/OC_Projects/projects/signalnyc/data/snapshots/footprints_joined.geojson",
+  "sha256": "325275c57c1e148e3f632c5d66d92b23be4a96efc9bf7da9522e1ae6ab5c8b3c",
+  "features": 932,
+  "stats": {
+    "footprints_total": 1817,
+    "joined_features": 932,
+    "unmatched_no_energy_data": 885,
+    "skipped_no_geometry": 0,
+    "join_note": "BBL join first (mappluto_bbl, fallback base_bbl), BIN fallback. Polygon carries the PROPERTY-level energy row; for campus (multi-BIN) properties this is property-level, NOT per-building truth."
+  },
+  "footprint_snapshot_manifest": {
+    "captured_utc": "2026-09-25T07:05:20Z",
+    "dataset": "5zhs-2jue (BUILDING footprints)",
+    "resource": "https://data.cityofnewyork.us/resource/5zhs-2jue.json",
+    "query_where": "within_box(the_geom, 40.765, -73.988, 40.748, -73.970)",
+    "fields": [
+      "the_geom",
+      "bin",
+      "doitt_id",
+      "shape_area",
+      "base_bbl",
+      "mappluto_bbl",
+      "height_roof",
+      "construction_year",
+      "name",
+      "feature_code"
+    ],
+    "rows": 1817,
+    "sha256": "b3740ad9d408279d9b63095f499633a40c0bdadbac96e769ba6ca971eeda3df7",
+    "raw_file": "/mnt/e/OC_Projects/projects/signalnyc/data/snapshots/footprints_midtown_core.raw.json"
+  },
+  "ll84_snapshot": "ll84_2024_midtown_core"
+}
