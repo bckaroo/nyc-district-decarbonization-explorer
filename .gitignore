@@ -17,4 +17,15 @@ data/citywide/mappluto_lots.sqlite-shm
 
 # citywide demand SQLite (served from data/, not git)
 data/citywide/annual_demand_citywide/*.sqlite*
+
+# Large raw source downloads. These are reproducible from their manifest's
+# source URL + sha256, so they are not tracked: the DOB footprint GeoJSON alone
+# is 817 MB and would break the push. Manifests stay tracked as the audit record.
+data/citywide/*.raw.geojson
+data/citywide/*.raw.jsonl
+
+# Derived layer GeoJSON kept SMALL is tracked (bids.geojson ~2.4 MB,
+# campuses.geojson ~0.6 MB) because the app serves them directly. The citywide
+# footprint DB (733 MB) is ignored above with the other SQLite stores.
+
 __pycache__/

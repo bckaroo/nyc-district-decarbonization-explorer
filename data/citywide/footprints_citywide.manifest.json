@@ -1,0 +1,28 @@
+{
+  "source": "NYC Open Data Socrata 5zhs-2jue (DOB BUILDING footprints), bulk GeoJSON export",
+  "raw_file": "footprints_citywide.raw.geojson",
+  "raw_bytes": 855812460,
+  "raw_sha256": "1a910861185ed4382a315b6314d3b4dda0d3e8a0a46b6f8d3b35c9d4e3b79946",
+  "features_ingested": 1083047,
+  "skipped_no_geom": 0,
+  "ll84_snapshot": "ll84_citywide_2024_v2.raw.jsonl",
+  "ll84_sha256": "79bb98f5b326a25971ffe603067bf25a114d0ab51b66fa87cbe59ba9e4a9d52e",
+  "ll84_rows": 39090,
+  "ll84_distinct_bbl": 26438,
+  "ll84_distinct_bin": 34081,
+  "join": {
+    "by_bbl": 48182,
+    "by_bin": 1024,
+    "total_with_ll84": 49206,
+    "join_rate_pct": 4.54,
+    "note": "LL84 benchmarks buildings above the LL97/benchmarking size threshold, so most DOB footprints have no energy record by design. has_ll84=0 is 'not required to report', NOT 'zero energy'."
+  },
+  "modeled_demand": {
+    "source": "annual_demand_citywide.sqlite",
+    "bbls_with_demand": 856687,
+    "footprints_with_net_thermal": 41161,
+    "note": "modeled, not measured; NULLs preserved as NULL"
+  },
+  "generated_utc": "2026-09-25T14:05:25Z",
+  "generation_seconds": 185.4
+}

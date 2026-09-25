@@ -1,0 +1,24 @@
+{
+  "source": "NYC Open Data Socrata 7jdm-inj8 (Business Improvement Districts)",
+  "resource_url": "https://data.cityofnewyork.us/resource/7jdm-inj8.json",
+  "field_map": {
+    "f_all_bi_1": "borough",
+    "f_all_bi_2": "bid_name",
+    "f_all_bi_4": "website",
+    "year_found": "year_found",
+    "the_geom": "geometry"
+  },
+  "bid_count": 76,
+  "skipped": 0,
+  "by_borough": {
+    "Manhattan": 26,
+    "Bronx": 12,
+    "Queens": 11,
+    "Brooklyn": 23,
+    "Staten Island": 4
+  },
+  "geojson_sha256": "d47899760c62b151ba71d32ea75bd9ab683a9bd12a4fb5cd0baabb12190e52ac",
+  "bytes": 2433616,
+  "generated_utc": "2026-09-25T14:10:45Z",
+  "note": "BID boundaries are administrative districts. They are NOT thermal districts: a BID boundary says nothing about shared heating/cooling infrastructure. Present as study-area boundaries only."
+}

@@ -117,6 +117,9 @@ export default function MapPanel({
   const [parcelState, setParcelState] = useState<
     { loaded: number; truncated: boolean } | null
   >(null);
+  const [footprintState, setFootprintState] = useState<
+    { loaded: number; matched: number; truncated: boolean } | null
+  >(null);
   const theme = getTheme(themeId) ?? OBSERVED_THEMES[0];
   propsRef.current = { properties, selectedId, theme };
 
@@ -168,66 +171,59 @@ export default function MapPanel({
         if (dataLayersAdded) return;
         if (!map.isStyleLoaded()) return; // retry via the pending timer/load
         dataLayersAdded = true;
-        // --- footprint polygons (fetched from /api/footprints, joined w/ energy) ---
-        fetch("/api/footprints")
-          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-          .then((fc: { features?: Array<{ geometry?: { type?: string } }> }) => {
-            if (cancelled) return;
-            const feats = (fc?.features ?? []).filter(
-              (f) => f?.geometry?.type === "Polygon" || f?.geometry?.type === "MultiPolygon"
-            );
-            if (!feats.length) return;
-            setMode("footprints");
-            // Hand the served footprints up to App so the analysis rail
-            // summarizes the SAME features the map paints, not a re-derivation.
-            onFeaturesChange?.(feats as unknown as FootFeature[]);
-            map.addSource("footprints", {
-              type: "geojson",
-              data: {
-                type: "FeatureCollection",
-                features: feats as unknown as Array<import("geojson").Feature>,
-              },
-            });
-            map.addLayer({
-              id: "fp-fill",
-              type: "fill",
-              source: "footprints",
-              paint: {
-                "fill-color": themeFillColor(propsRef.current.theme) as never,
-                "fill-opacity": opacityExpr(
-                  propsRef.current.theme,
-                  propsRef.current.selectedId
-                ) as never,
-              },
-            });
-            map.addLayer({
-              id: "fp-line",
-              type: "line",
-              source: "footprints",
-              paint: {
-                // Slightly soft outline: enough to separate adjoining
-                // footprints, not a hard black grid over the data.
-                "line-color": "#3a4048",
-                "line-width": 0.7,
-                "line-opacity": 0.6,
-              },
-            });
-            map.on("click", "fp-fill", (e) => {
-              const f = e.features?.[0];
-              if (f && typeof f.properties?.pid === "string") onSelect(f.properties.pid);
-            });
-            map.on("mouseenter", "fp-fill", () => {
-              map.getCanvas().style.cursor = "pointer";
-            });
-            map.on("mouseleave", "fp-fill", () => {
-              map.getCanvas().style.cursor = "";
-            });
-          })
-          .catch((err: unknown) => {
-            if (cancelled) return;
-            console.error("[map] footprints layer failed:", err);
-            setError("Building footprints could not load — table remains available.");
-          });
+        // --- footprint polygons: CITYWIDE, refetched over the visible bbox ----
+        // This used to fetch /api/footprints once (the 932-feature Midtown
+        // pilot), which is why the map only ever showed a small slice of the
+        // city. All DOB footprints now live in SQLite (footprints_citywide)
+        // and are served per viewport, mirroring the parcels layer below.
+        setMode("footprints");
+        map.addSource("footprints", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: "fp-fill",
+          type: "fill",
+          source: "footprints",
+          paint: {
+            "fill-color": themeFillColor(propsRef.current.theme) as never,
+            "fill-opacity": opacityExpr(
+              propsRef.current.theme,
+              propsRef.current.selectedId
+            ) as never,
+          },
+        });
+        map.addLayer({
+          id: "fp-line",
+          type: "line",
+          source: "footprints",
+          paint: {
+            // Slightly soft outline: enough to separate adjoining
+            // footprints, not a hard black grid over the data.
+            "line-color": "#3a4048",
+            "line-width": 0.7,
+            "line-opacity": 0.6,
+          },
+        });
+        map.on("click", "fp-fill", (e) => {
+          const f = e.features?.[0];
+          const p = f?.properties as Record<string, unknown> | undefined;
+          // Citywide features carry `bbl`; the pilot carried `pid`.
+          if (typeof p?.bbl === "string") {
+            const match = propsRef.current.properties.find((q) => q.bbl === p.bbl);
+            if (match) {
+              onSelect(match.property_id);
+              return;
+            }
+          }
+          if (typeof p?.pid === "string") onSelect(p.pid);
+        });
+        map.on("mouseenter", "fp-fill", () => {
+          map.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", "fp-fill", () => {
+          map.getCanvas().style.cursor = "";
+        });
         // --- property points (marker for properties w/o a footprint match) ---
         map.addSource("props", {
           type: "geojson",
@@ -290,6 +286,88 @@ export default function MapPanel({
         });
         setFeatures(propsRef.current.properties);
       };
+
+      // ---- citywide footprint loader (mirrors the parcels loader) ----------
+      // Same response-stamping discipline: a slow older response can never
+      // overwrite a newer one.
+      let fpReqSeq = 0;
+      const loadFootprints = () => {
+        const map = mapRef.current;
+        if (!map || !map.getLayer("fp-fill")) return;
+        const b = map.getBounds().toArray() as number[][]; // [[sw],[ne]]
+        const seq = ++fpReqSeq;
+        const qs = new URLSearchParams({
+          min_x: String(b[0][0]),
+          min_y: String(b[0][1]),
+          max_x: String(b[1][0]),
+          max_y: String(b[1][1]),
+          limit: "12000",
+        });
+        fetch(`/api/footprints/bbox?${qs.toString()}`)
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+          .then(
+            (d: {
+              bbox?: number[];
+              features?: FootFeature[];
+              matched?: number;
+              truncated?: boolean;
+            }) => {
+              if (cancelled) return;
+              const cur = mapRef.current;
+              if (!cur || !cur.getLayer("fp-fill")) return;
+              const now = cur.getBounds().toArray() as number[][];
+              const curBox = [now[0][0], now[0][1], now[1][0], now[1][1]];
+              const stale =
+                d.bbox &&
+                d.bbox.some(
+                  (v, i) =>
+                    Math.abs(v - curBox[i]) > Math.max(Math.abs(curBox[i]) * 1e-6, 1e-9)
+                );
+              if (stale || seq !== fpReqSeq) return;
+              const feats = (d.features ?? []).filter(
+                (f) =>
+                  f?.geometry &&
+                  ((f.geometry as { type?: string }).type === "Polygon" ||
+                    (f.geometry as { type?: string }).type === "MultiPolygon")
+              );
+              const src = cur.getSource("footprints") as
+                | maplibregl.GeoJSONSource
+                | undefined;
+              if (!src) return;
+              src.setData({
+                type: "FeatureCollection",
+                features: feats as unknown as Array<import("geojson").Feature>,
+              });
+              setFootprintState({
+                loaded: feats.length,
+                matched: d.matched ?? feats.length,
+                truncated: Boolean(d.truncated),
+              });
+              // Feed the analysis rail the features actually painted.
+              onFeaturesChange?.(feats);
+            }
+          )
+          .catch((err: unknown) => {
+            if (!cancelled)
+              console.error("[map] citywide footprints fetch failed:", err);
+          });
+      };
+      let fpTimer: ReturnType<typeof setTimeout> | null = null;
+      const scheduleFootprints = () => {
+        if (cancelled) return;
+        if (fpTimer) clearTimeout(fpTimer);
+        fpTimer = setTimeout(loadFootprints, 350);
+      };
+      const startFootprintWiring = () => {
+        if (cancelled) return;
+        if (!mapRef.current || !mapRef.current.getLayer("fp-fill")) {
+          setTimeout(startFootprintWiring, 500);
+          return;
+        }
+        loadFootprints();
+        map.on("moveend", scheduleFootprints);
+      };
+      startFootprintWiring();
 
       // Prefetch-on-move with response stamping so a slow older response can
       // never overwrite a newer one (async stale-closure fix).
@@ -495,6 +573,15 @@ export default function MapPanel({
         <div className="map-parcel-status" data-testid="parcel-status">
           Citywide parcels: {parcelState.loaded.toLocaleString("en-US")}
           {parcelState.truncated ? " (view truncated — zoom in)" : ""}
+        </div>
+      )}
+      {footprintState && !error && (
+        <div className="map-parcel-status" data-testid="footprint-status">
+          Buildings in view: {footprintState.loaded.toLocaleString("en-US")}
+          {footprintState.matched > footprintState.loaded
+            ? ` of ${footprintState.matched.toLocaleString("en-US")}`
+            : ""}
+          {footprintState.truncated ? " (view truncated — zoom in)" : ""}
         </div>
       )}
       {mode === "footprints" && !error && (

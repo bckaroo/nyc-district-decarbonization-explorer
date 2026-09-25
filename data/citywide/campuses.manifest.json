@@ -1,0 +1,13 @@
+{
+  "source": "Derived from COLP (fn4k-qyk2) ownership + MapPLUTO lot polygons",
+  "definition": "A campus is a set of lots sharing an owner/agency label whose polygons are within SNAP_DEG of each other, dissolved into one polygon. This is a PROXY for a commonly-operated portfolio \u2014 not an official boundary, and not evidence of a shared plant or meter.",
+  "params": {
+    "snap_deg": 0.0003,
+    "min_lots": 4,
+    "min_bldg_sqft": 50000
+  },
+  "campus_count": 158,
+  "geojson_sha256": "1d71a197498bc30ca611dd94b1d6e7ac0b7975c252d902d6ececedd8cfa32b7d",
+  "generated_utc": "2026-09-25T14:11:46Z",
+  "limitation": "Private campuses (Rockefeller Center, Penn/Vornado) need a PLUTO ownername pass; this build covers city-agency ownership only."
+}

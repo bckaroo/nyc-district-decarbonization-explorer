@@ -39,6 +39,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
 import sqlite3
 import statistics
 import sys
@@ -58,27 +60,58 @@ PARAMS = pilot.PARAMS
 MODEL_VERSION = f"{pilot.MODEL_VERSION} (citywide per-lot)"
 ETA = pilot.ETA
 ENDUSES = ("space_heating", "dhw", "cooling")
-# LL84 observed inputs the model consumes (pilot keys).
+# LL84 observed inputs the model consumes (pilot keys). MUST include every
+# heating-bearing fuel: when this list carried only gas + electricity, the
+# citywide model reproduced the pilot's all-blue bug (steam-served buildings
+# read as heating-free). See pilot.model_one for the unit/basis rules.
 OBS_KEYS = (
     "property_gfa_self_reported",
     "site_eui_kbtu_ft",
     "natural_gas_use_kbtu",
     "electricity_use_grid_purchase",
+    "district_steam_use_kbtu",
+    "district_hot_water_use_kbtu",
+    "district_chilled_water_use",
+    "fuel_oil_1_use_kbtu",
+    "fuel_oil_2_use_kbtu",
+    "fuel_oil_4_use_kbtu",
+    "fuel_oil_5_6_use_kbtu",
+    "diesel_2_use_kbtu",
+    "propane_use_kbtu",
 )
 # Area-scaled inputs under campus apportionment; EUI stays unscaled (per-ft²).
+# Every fuel total scales with floor area, so each must be apportioned too —
+# scaling only gas/electricity would under-count apportioned campuses.
 AREA_SCALED_KEYS = (
     "property_gfa_self_reported",
     "natural_gas_use_kbtu",
     "electricity_use_grid_purchase",
+    "district_steam_use_kbtu",
+    "district_hot_water_use_kbtu",
+    "district_chilled_water_use",
+    "fuel_oil_1_use_kbtu",
+    "fuel_oil_2_use_kbtu",
+    "fuel_oil_4_use_kbtu",
+    "fuel_oil_5_6_use_kbtu",
+    "diesel_2_use_kbtu",
+    "propane_use_kbtu",
 )
 
-LL84_ROWS = REPO / "data" / "citywide" / "ll84_citywide_2024.raw.jsonl"
-LL84_MANIFEST = REPO / "data" / "citywide" / "ll84_citywide_2024.manifest.json"
+LL84_ROWS = REPO / "data" / "citywide" / "ll84_citywide_2024_v2.raw.jsonl"
+LL84_MANIFEST = REPO / "data" / "citywide" / "ll84_citywide_2024_v2.manifest.json"
 LOT_DB = REPO / "data" / "citywide" / "mappluto_lots.sqlite"
 OUT_DIR = REPO / "data" / "citywide" / "annual_demand_citywide"
 OUT_SQLITE = OUT_DIR / "annual_demand_citywide.sqlite"
 OUT_PARQUET = OUT_DIR / "annual_demand_citywide.parquet"
 OUT_MANIFEST = OUT_DIR / "manifest.json"
+
+# Build on native disk then copy: ~857k inserts of small synced random writes
+# are ~20x slower on the /mnt/* Windows mounts (measured 11.3 vs 220 MB/s for
+# 4K fsync), which turns a minutes-long build into hours.
+SCRATCH = Path(
+    os.environ.get("SIGNALNYC_SCRATCH", "/home/abuck/.hermes/cache/scratch/signalnyc_build")
+)
+STAGE_SQLITE = SCRATCH / "annual_demand_citywide.sqlite"
 
 
 def sha256_file(path: Path) -> str:
@@ -201,9 +234,16 @@ def main() -> None:
 
     # ---- write sqlite (canonical)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    if OUT_SQLITE.exists():
-        OUT_SQLITE.unlink()
-    out = sqlite3.connect(OUT_SQLITE)
+    STAGE_SQLITE.parent.mkdir(parents=True, exist_ok=True)
+    if STAGE_SQLITE.exists():
+        STAGE_SQLITE.unlink()
+    out = sqlite3.connect(STAGE_SQLITE)
+    # Bulk-load pragmas: this is a disposable build we checkpoint before
+    # publishing, so durability during the run is not needed, and NORMAL sync
+    # plus a large page cache cuts the small-write cost dramatically.
+    out.execute("PRAGMA journal_mode=MEMORY")
+    out.execute("PRAGMA synchronous=OFF")
+    out.execute("PRAGMA cache_size=-200000")  # ~200MB page cache
     out.execute("""CREATE TABLE annual_demand (
         bbl TEXT PRIMARY KEY,
         borough TEXT, block TEXT, lot TEXT,
@@ -239,11 +279,23 @@ def main() -> None:
             for e in ENDUSES:
                 v = m[f"{e}_kbtu"]
                 m[f"{e}_kbtu_ft2_yr"] = round(v / gfa, 2) if v is not None else None
-        # conservation receipt (T1, scaled semantics — mirrors pilot receipt)
+        # Conservation receipt (T1). The denominator must sum EVERY
+        # heating-bearing fuel the model consumed — using gas alone produced
+        # implied_eta > 1.0 (delivered heat exceeding fuel input), which is how
+        # the omitted-fuels bug was caught in the pilot. District chilled water
+        # is excluded: it is cooling, not heating.
         if m["evidence_tier"] == "T1_observed_full":
-            g = eff.get("natural_gas_use_kbtu") or 0.0
-            if g > 0:
-                cons_gas += g
+            fuel_in = 0.0
+            for k in ("natural_gas_use_kbtu", "district_steam_use_kbtu",
+                      "district_hot_water_use_kbtu", "fuel_oil_1_use_kbtu",
+                      "fuel_oil_2_use_kbtu", "fuel_oil_4_use_kbtu",
+                      "fuel_oil_5_6_use_kbtu", "diesel_2_use_kbtu",
+                      "propane_use_kbtu"):
+                v = eff.get(k)
+                if v and v > 0:
+                    fuel_in += v
+            if fuel_in > 0:
+                cons_gas += fuel_in
                 cons_alloc += (m["space_heating_kbtu"] or 0) + (m["dhw_kbtu"] or 0)
         tier_count[m["evidence_tier"]] += 1
         b = str(r["borough"] or "?")
@@ -275,8 +327,23 @@ def main() -> None:
              1 if campus_apportioned else 0, group_n, w),
         )
         inserted += 1
+        # Commit periodically: this loop inserts ~857k rows, and holding them
+        # all in one transaction means any interruption discards the entire
+        # build (which happened — a mid-run kill left an empty table). Batched
+        # commits keep completed work.
+        if inserted % 25000 == 0:
+            out.commit()
+            print(f"  … {inserted:,} lots modeled", flush=True)
+    out.commit()
+    out.execute("PRAGMA journal_mode=DELETE")
     out.commit()
     out.close()
+
+    # Publish the checkpointed DB into the repo.
+    if OUT_SQLITE.exists():
+        OUT_SQLITE.unlink()
+    shutil.copyfile(STAGE_SQLITE, OUT_SQLITE)
+    print(f"published {OUT_SQLITE} ({OUT_SQLITE.stat().st_size/1e6:.1f} MB)", flush=True)
 
     # ---- parquet mirror (canonical is sqlite)
     parquet_status = "skipped"
@@ -313,10 +380,12 @@ def main() -> None:
             "mappluto_lots_sqlite": LOT_DB.name,
             "mappluto_sqlite_sha256": sha256_file(LOT_DB),
             "params_sha256": sha256_file(REPO / "scripts" / "annual_demand_params.json"),
-            "citywide_footprint_geojson": ("NOT AVAILABLE on disk — citywide footprint fetch "
-                                           "has not been run; MapPLUTO lot polygons (856,687) "
-                                           "serve as the citywide geometry layer. Bounding the "
-                                           "work to completed stores."),
+            "citywide_footprint_geojson": (
+                "data/citywide/footprints_citywide.raw.geojson (DOB 5zhs-2jue bulk "
+                "export) is ingested into footprints_citywide.sqlite and served by "
+                "/api/footprints/bbox; MapPLUTO lot polygons (856,687) remain the "
+                "separate per-lot layer served by /api/parcels."
+            ),
         },
         "counts": {
             "lots_total": len(lots),

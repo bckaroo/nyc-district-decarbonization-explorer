@@ -182,14 +182,123 @@ def create_app(
 
     # ---- citywide ParcelStore (MapPLUTO + citywide LL84 join) -----------------
     from .citywide_parcels import ParcelStore
+    from .citywide_footprints import FootprintStore
 
     _citywide_store: ParcelStore | None = None
+    _footprint_store: FootprintStore | None = None
 
     def _parcel_store() -> ParcelStore:
         nonlocal _citywide_store
         if _citywide_store is None:
             _citywide_store = ParcelStore()
         return _citywide_store
+
+    def _fp_store() -> FootprintStore:
+        nonlocal _footprint_store
+        if _footprint_store is None:
+            _footprint_store = FootprintStore()
+        return _footprint_store
+
+    # ---- citywide footprints (all DOB buildings, not just the pilot) --------
+    @app.get("/api/footprints/bbox", include_in_schema=True)
+    def api_footprints_bbox(
+        min_x: float = Query(..., ge=-180, le=180),
+        min_y: float = Query(..., ge=-90, le=90),
+        max_x: float = Query(..., ge=-180, le=180),
+        max_y: float = Query(..., ge=-90, le=90),
+        limit: int = Query(default=12000, ge=1, le=40000),
+    ):
+        if min_x >= max_x or min_y >= max_y:
+            raise HTTPException(status_code=400, detail="bbox min must be < max")
+        try:
+            store = _fp_store()
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"citywide footprint store unavailable: {e}")
+        try:
+            feats, matched, truncated = store.query_bbox(min_x, min_y, max_x, max_y, limit)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        return {
+            "type": "FeatureCollection",
+            "bbox": [min_x, min_y, max_x, max_y],
+            "returned": len(feats),
+            "matched": matched,
+            "truncated": truncated,
+            "features": feats,
+        }
+
+    @app.get("/api/districts", include_in_schema=True)
+    def api_districts(kind: str | None = None):
+        """Predefined study-area boundaries (BIDs, and campuses once derived).
+
+        Served whole rather than by bbox: the whole BID layer is ~2.4 MB and a
+        study selection needs the complete list of names, not just what is in
+        view. `kind` filters to one boundary family.
+        """
+        from .districts import load_districts
+
+        try:
+            fc, meta = load_districts()
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        if kind:
+            fc = {
+                **fc,
+                "features": [
+                    f for f in fc["features"] if f["properties"].get("kind") == kind
+                ],
+            }
+        return {**fc, "returned": len(fc["features"]), "meta": meta}
+
+    @app.get("/api/districts/{district_id}", include_in_schema=True)
+    def api_district_detail(district_id: str):
+        """One district plus the footprints inside it (for the study view)."""
+        from .districts import geom_bbox, load_districts
+
+        try:
+            fc, _ = load_districts()
+            store = _fp_store()
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        feat = next(
+            (f for f in fc["features"] if f["properties"].get("district_id") == district_id),
+            None,
+        )
+        if feat is None:
+            raise HTTPException(status_code=404, detail=f"unknown district: {district_id}")
+        bb = geom_bbox(feat["geometry"])
+        if bb is None:
+            raise HTTPException(status_code=500, detail="district geometry has no coordinates")
+        feats, matched, truncated = store.query_bbox(bb[0], bb[1], bb[2], bb[3], 40000)
+        return {
+            "type": "FeatureCollection",
+            "district": feat["properties"],
+            "geometry": feat["geometry"],
+            "footprints": feats,
+            "footprints_in_bbox": matched,
+            "truncated": truncated,
+        }
+
+    @app.get("/api/footprints/coverage", include_in_schema=True)
+    def api_footprints_coverage():
+        try:
+            return _fp_store().coverage()
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+
+    @app.get("/api/footprints/bin/{bin_id}", include_in_schema=True)
+    def api_footprint_by_bin(bin_id: str):
+        try:
+            store = _fp_store()
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"citywide footprint store unavailable: {e}")
+        try:
+            feat = store.by_bin(bin_id)
+        except FileNotFoundError as e:
+            raise HTTPException(status_code=503, detail=str(e))
+        if feat is None:
+            raise HTTPException(status_code=404, detail=f"no footprint for BIN {bin_id}")
+        return feat
 
     @app.get("/api/parcels", include_in_schema=True)
     def api_parcels(

@@ -32,5 +32,5 @@ FIELDS = [
 OUT = os.path.join(REPO, "data", "citywide")
 
 if __name__ == "__main__":
-    m = snapshot_dataset(OUT, FID, WHERE, "ll84_citywide_2024", fields=FIELDS, page_size=10000)
+    m = snapshot_dataset(OUT, FID, WHERE, "ll84_citywide_2024_v2", fields=FIELDS, page_size=10000)
     print("manifest:", m["captured_utc"], "rows:", m["rows"], "sha256:", m["sha256"])

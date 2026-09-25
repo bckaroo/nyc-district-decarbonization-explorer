@@ -1,0 +1,86 @@
+{
+  "source": "MapPLUTO ownername (Socrata 64uk-42ks) + local MapPLUTO lot polygons",
+  "definition": "Campus = contiguous lots sharing a NORMALIZED OWNER FAMILY. Owner names are fragmented across single-lot LLCs, so families are matched by explicit pattern table (see owner_patterns). Proxy only.",
+  "params": {
+    "snap_deg": 0.0003,
+    "min_lots": 3,
+    "min_bldg_sqft": 100000
+  },
+  "owner_patterns": {
+    "nys_dot": [
+      "NYS DEPARTMENT OF TRANSPORTATION"
+    ],
+    "nys_dec": [
+      "NYS DEPARTMENT OF ENVIRONMENTAL CONSERVATION"
+    ],
+    "nys_ogs": [
+      "NYS OFFICE OF GENERAL SERVICES"
+    ],
+    "nys_dasny": [
+      "DORMITORY AUTHORITY%STATE OF NEW YORK"
+    ],
+    "nys_state": [
+      "STATE OF NEW YORK",
+      "PEOPLE OF THE STATE OF NEW YORK"
+    ],
+    "nys_parks": [
+      "NYS DIV OF LANDS AND FORESTS"
+    ],
+    "mta_lirr": [
+      "MTA - LIRR",
+      "MTA-LIRR"
+    ],
+    "mta_metro_north": [
+      "%METRO-NORTH%",
+      "%METRO NORTH%"
+    ],
+    "penn_central": [
+      "%PENN CENTRAL%"
+    ],
+    "rockefeller": [
+      "%ROCKEFELLER%"
+    ],
+    "vornado": [
+      "%VORNADO%"
+    ],
+    "brookfield": [
+      "%BROOKFIELD%"
+    ],
+    "tishman_speyer": [
+      "%TISHMAN SPEYER%"
+    ],
+    "related": [
+      "%RELATED COMPANIES%",
+      "%RELATED %COMPANIES%"
+    ],
+    "slgreen": [
+      "%SL GREEN%"
+    ],
+    "rbc": [
+      "%RXR%",
+      "%RUDIN%",
+      "%BOSTON PROPERTIES%"
+    ],
+    "columbia": [
+      "%TRUSTEES OF COLUMBIA UNIVERSITY%",
+      "%COLUMBIA UNIVERSITY%"
+    ],
+    "nyu": [
+      "%NEW YORK UNIVERSITY%"
+    ],
+    "cornell": [
+      "%CORNELL UNIVERSITY%"
+    ],
+    "fordham": [
+      "%FORDHAM UNIVERSITY%"
+    ],
+    "nysp_hospitals": [
+      "%HEALTH AND HOSPITALS%"
+    ]
+  },
+  "target_bbls": 1754,
+  "joined_bbls": 1678,
+  "campus_count": 39,
+  "geojson_sha256": "913acd1ab3cb277cb6cdb219ed766d5a93f9c3b53050e4d930af10a385a8b707",
+  "generated_utc": "2026-09-25T14:10:28Z"
+}

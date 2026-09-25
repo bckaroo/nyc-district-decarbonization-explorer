@@ -1,0 +1,31 @@
+{
+  "source": "NYC Open Data Socrata fn4k-qyk2 (City Owned and Leased Property)",
+  "resource_url": "https://data.cityofnewyork.us/resource/fn4k-qyk2.json",
+  "rows": 17298,
+  "dropped_bad_bbl": 0,
+  "distinct_agencies": 152,
+  "top_agencies": {
+    "PARKS": 5566,
+    "DCAS": 2175,
+    "EDUC": 1731,
+    "NYCHA": 1265,
+    "DEP": 1114,
+    "HPD": 854,
+    "DOT": 810,
+    "DSBS": 600,
+    "EDC": 591,
+    "NYCTA": 397,
+    "FIRE": 334,
+    "NYPD": 321,
+    "SANIT": 192,
+    "MTA": 139,
+    "DHS": 99
+  },
+  "raw_sha256": "a28f82fbd4120eb4b716ca1696d63b284567e3124deb48bcc82bf0a331627a38",
+  "generated_utc": "2026-09-25T14:03:52Z",
+  "notes": [
+    "BBL arrives as a float in the source and is normalized to 10 digits.",
+    "Covers city-owned AND leased property; `leased_properties` distinguishes.",
+    "Geometry in COLP is points only \u2014 campus polygons are dissolved from MapPLUTO lot polygons, not from COLP."
+  ]
+}
