@@ -295,9 +295,7 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
                   >,
                   properties: {
                     bbl: f.properties?.bbl,
-                    has_ll84: Array.isArray(f.properties?.ll84_availability)
-                      ? (f.properties?.ll84_availability as unknown[]).length > 0
-                      : false,
+                    has_ll84: !!f.properties?.ll84,
                     year_built: f.properties?.year_built ?? null,
                     bldg_area_sqft: f.properties?.bldg_area_sqft ?? null,
                   },
