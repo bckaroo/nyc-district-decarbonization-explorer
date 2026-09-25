@@ -87,20 +87,51 @@ class FootprintStore:
         return self._conn
 
     def coverage(self) -> dict:
+        """Coverage counts for the citywide footprint layer.
+
+        The net-thermal count is NOT computed by scanning `footprints` here: the
+        predicted column is not indexed, so `WHERE net_thermal_kbtu_ft2_yr IS NOT
+        NULL` over 1,083,047 rows takes ~27s and made this endpoint time out
+        (curl returned HTTP 000 after 60s while /api/footprints/bbox served in
+        0.85s). The build already computed the authoritative counts, so prefer
+        the manifest and fall back to the scan only if it is unavailable.
+        """
+        manifest = self.db_path.parent / "footprints_citywide.manifest.json"
+        counts = None
+        if manifest.exists():
+            try:
+                m = json.loads(manifest.read_text())
+                md = m.get("modeled_demand") or {}
+                join = m.get("join") or {}
+                counts = {
+                    "total": m.get("features_ingested"),
+                    "with_net": md.get("footprints_with_net_thermal"),
+                    "with_ll": join.get("total_with_ll84"),
+                }
+            except (OSError, ValueError):
+                counts = None
+
         with self._lock:
             db = self._connect()
-            total = db.execute("SELECT COUNT(*) FROM footprints").fetchone()[0]
-            with_ll = db.execute(
-                "SELECT COUNT(*) FROM footprints WHERE has_ll84=1"
-            ).fetchone()[0]
-            with_net = db.execute(
-                "SELECT COUNT(*) FROM footprints WHERE net_thermal_kbtu_ft2_yr IS NOT NULL"
-            ).fetchone()[0]
+            total = counts["total"] if counts and counts["total"] else None
+            if not total:
+                total = db.execute("SELECT COUNT(*) FROM footprints").fetchone()[0]
+            if counts and counts["with_net"] is not None:
+                with_ll = counts["with_ll"]
+                with_net = counts["with_net"]
+            else:
+                with_ll = db.execute(
+                    "SELECT COUNT(*) FROM footprints WHERE has_ll84=1"
+                ).fetchone()[0]
+                with_net = db.execute(
+                    "SELECT COUNT(*) FROM footprints WHERE net_thermal_kbtu_ft2_yr IS NOT NULL"
+                ).fetchone()[0]
         return {
             "source": "NYC DOB BUILDING footprints (Socrata 5zhs-2jue), citywide",
             "footprints_total": total,
             "footprints_with_ll84": with_ll,
             "footprints_with_modeled_net_thermal": with_net,
+            "counts_from_manifest": bool(counts),
             "note": (
                 "LL84 covers only buildings above the benchmarking size threshold, "
                 "so a low join rate is expected. has_ll84=0 means not required to "
