@@ -37,9 +37,17 @@ FP_DB = DATA / "footprints_citywide.sqlite"
 DEMAND_DB = DATA / "annual_demand_citywide" / "annual_demand_citywide.sqlite"
 
 # Columns the map/table/dossier actually consume. Explicit so a schema addition
-# is a deliberate decision about what gets published.
+# is a deliberate decision about what gets published. The observed LL84 columns
+# are what the observed themes (Site EUI, GHG, fuels) paint from — the first
+# static export baked only the modeled columns, so every observed theme rendered
+# the whole city as no-data on GitHub Pages.
 FP_COLS = [
     "bbl", "bin", "name", "height_roof", "construction_year", "has_ll84",
+    # observed (LL84 property-level ratios/inputs, carried on the footprint join)
+    "site_eui_kbtu_ft", "weather_normalized_site_eui",
+    "total_location_based_ghg", "direct_ghg_emissions_intensity",
+    "electricity_use_grid_purchase", "natural_gas_use_kbtu",
+    # modeled
     "space_heating_kbtu_ft2_yr", "dhw_kbtu_ft2_yr", "cooling_kbtu_ft2_yr",
     "net_thermal_kbtu_ft2_yr", "evidence_tier",
 ]

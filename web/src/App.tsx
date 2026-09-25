@@ -19,6 +19,7 @@ import {
   loadDistricts as loadStaticDistricts,
   loadNetThermal,
   loadTable,
+  staticModeReady,
   staticModeSync,
 } from "./staticData";
 import "./app.css";
@@ -99,11 +100,16 @@ export default function App() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    // Static build: filter the baked table client-side with the same predicate
-    // the API applies, so the table behaves identically without a backend.
-    if (staticModeSync()) {
-      loadTable()
-        .then((t) => {
+    (async () => {
+      // Static build: filter the baked table client-side with the same predicate
+      // the API applies, so the table behaves identically without a backend.
+      // staticModeReady, not staticModeSync: this effect runs before the async
+      // mode probe resolves, and a sync check saw "API mode", requested
+      // /api/properties, got 404 and showed "Error: 404 / 0 matching" — the
+      // symptom visible on the published page screenshot.
+      if (await staticModeReady()) {
+        try {
+          const t = await loadTable();
           if (cancelled) return;
           let list = (t.properties ?? []) as PropertySummary[];
           if (query.trim()) {
@@ -122,29 +128,27 @@ export default function App() {
           setRows(list);
           setTotal(list.length);
           setLoading(false);
+        } catch (e) {
+          if (cancelled) return;
+          setError((e as Error).message);
+          setLoading(false);
+        }
+        return;
+      }
+      api
+        .search({ q: query, missing_field: missingField, limit: 400 })
+        .then((res) => {
+          if (cancelled) return;
+          setRows(res.properties);
+          setTotal(res.total);
+          setLoading(false);
         })
         .catch((e: Error) => {
           if (cancelled) return;
           setError(e.message);
           setLoading(false);
         });
-      return () => {
-        cancelled = true;
-      };
-    }
-    api
-      .search({ q: query, missing_field: missingField, limit: 400 })
-      .then((res) => {
-        if (cancelled) return;
-        setRows(res.properties);
-        setTotal(res.total);
-        setLoading(false);
-      })
-      .catch((e: Error) => {
-        if (cancelled) return;
-        setError(e.message);
-        setLoading(false);
-      });
+    })();
     return () => {
       cancelled = true;
     };
@@ -259,6 +263,8 @@ export default function App() {
       .catch((err: unknown) => {
         // Static build: summarize the district from the baked layers instead of
         // a per-district endpoint. Same shape, so the rail is unchanged.
+        // By the time a user-triggered fetch has failed, the probe has long
+        // since resolved, so the sync check is safe here.
         if (!staticModeSync()) {
           console.error("[app] district fetch failed:", err);
           setDistrict(null);
