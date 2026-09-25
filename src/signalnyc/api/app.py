@@ -180,6 +180,20 @@ def create_app(
             raise HTTPException(status_code=404, detail="property_id not found in snapshot")
         return to_detail(store.by_id[property_id])
 
+    # ---- building footprints with joined energy attributes --------------------
+    _footprints_path = Path(
+        os.environ.get(
+            "SIGNALNYC_FOOTPRINTS",
+            str(Path(DEFAULT_RAW).parent / "footprints_joined.geojson"),
+        )
+    )
+
+    @app.get("/api/footprints", include_in_schema=True)
+    def api_footprints() -> FileResponse:
+        if not _footprints_path.exists():
+            raise HTTPException(status_code=404, detail="footprint layer not available for this snapshot")
+        return FileResponse(_footprints_path, media_type="application/geo+json")
+
     # ---- static frontend (prod build), mounted last --------------------------
     if web_dist.exists():
         app.mount("/assets", StaticFiles(directory=web_dist / "assets"), name="assets")

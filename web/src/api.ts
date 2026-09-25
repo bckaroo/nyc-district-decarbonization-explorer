@@ -89,6 +89,7 @@ async function getJson<T>(url: string, attempt = 1): Promise<T> {
 export const api = {
   snapshot: () => getJson<SnapshotInfo>("/api/snapshot"),
   counters: () => getJson<Counters>("/api/counters"),
+  footprints: () => getJson<unknown>("/api/footprints"),
   search: (params: {
     q?: string;
     missing_field?: string;

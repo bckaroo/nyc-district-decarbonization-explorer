@@ -17,8 +17,34 @@ const PUBLIC_STYLE: StyleSpecification = {
       attribution: "© OpenStreetMap contributors",
     },
   },
-  layers: [{ id: "osm", type: "raster", source: "osm" }],
+  layers: [
+    { id: "bg", type: "background", paint: { "background-color": "#141924" } },
+    { id: "osm", type: "raster", source: "osm", paint: { "raster-opacity": 0.75 } },
+  ],
 };
+
+// EUI color ramp (kBtu/ft2·yr): teal (low) -> green -> yellow -> orange -> red (high)
+function euiColorExpr(): unknown {
+  return [
+    "interpolate",
+    ["linear"],
+    ["to-number", ["get", "eui"]],
+    0, "#22d3ee",
+    60, "#34d399",
+    100, "#fbbf24",
+    160, "#fb923c",
+    240, "#f87171",
+  ];
+}
+
+const FP_HIGHLIGHT = (selectedId: string | null): unknown => [
+  "case",
+  ["==", ["get", "pid"], selectedId ?? "__none__"],
+  0.92,
+  ["!", ["has", "eui"]],
+  0.12,
+  0.55,
+];
 
 interface Props {
   properties: PropertySummary[];
@@ -30,6 +56,7 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"points" | "footprints">("points");
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -39,7 +66,7 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
         container: containerRef.current,
         style: PUBLIC_STYLE,
         center: [-73.979, 40.7565],
-        zoom: 12.6,
+        zoom: 13.2,
         attributionControl: {},
       });
       mapRef.current = map;
@@ -49,6 +76,54 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
       });
       map.on("load", () => {
         if (cancelled) return;
+        // --- footprint polygons (fetched from /api/footprints, joined w/ energy) ---
+        fetch("/api/footprints")
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+          .then((fc: { features?: Array<{ geometry?: { type?: string } }> }) => {
+            if (cancelled) return;
+            const feats = (fc?.features ?? []).filter(
+              (f) => f?.geometry?.type === "Polygon" || f?.geometry?.type === "MultiPolygon"
+            );
+            if (!feats.length) return;
+            setMode("footprints");
+            map.addSource("footprints", {
+              type: "geojson",
+              data: { type: "FeatureCollection", features: feats },
+            });
+            map.addLayer({
+              id: "fp-fill",
+              type: "fill",
+              source: "footprints",
+              paint: {
+                "fill-color": euiColorExpr() as never,
+                "fill-opacity": FP_HIGHLIGHT(selectedId) as never,
+              },
+            });
+            map.addLayer({
+              id: "fp-line",
+              type: "line",
+              source: "footprints",
+              paint: {
+                "line-color": "#0b0e14",
+                "line-width": 0.7,
+                "line-opacity": 0.6,
+              },
+            });
+            map.on("click", "fp-fill", (e) => {
+              const f = e.features?.[0];
+              if (f && typeof f.properties?.pid === "string") onSelect(f.properties.pid);
+            });
+            map.on("mouseenter", "fp-fill", () => {
+              map.getCanvas().style.cursor = "pointer";
+            });
+            map.on("mouseleave", "fp-fill", () => {
+              map.getCanvas().style.cursor = "";
+            });
+          })
+          .catch(() => {
+            /* footprints unavailable — points fallback stays visible */
+          });
+        // --- property points (marker for properties w/o a footprint match) ---
         map.addSource("props", {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
@@ -58,19 +133,11 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
           type: "circle",
           source: "props",
           paint: {
-            "circle-radius": [
-              "interpolate",
-              ["linear"],
-              ["zoom"],
-              12,
-              4,
-              15,
-              8,
-            ],
-            "circle-color": "#1a5fb4",
-            "circle-opacity": 0.75,
-            "circle-stroke-width": 1,
-            "circle-stroke-color": "#ffffff",
+            "circle-radius": ["interpolate", ["linear"], ["zoom"], 12, 2.5, 15, 5],
+            "circle-color": "#f1f5f9",
+            "circle-opacity": 0.85,
+            "circle-stroke-width": 0.8,
+            "circle-stroke-color": "#334155",
           },
         });
         map.on("click", "prop-points", (e) => {
@@ -121,29 +188,46 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
     else map.once("load", apply);
   }, [properties]);
 
-  // highlight selection
+  // highlight selection (polygons + points), fly to selection
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded() || !selectedId) return;
-    map.setPaintProperty("prop-points", "circle-color", [
-      "case",
-      ["==", ["get", "id"], selectedId],
-      "#e01e5a",
-      "#1a5fb4",
-    ]);
-    map.flyTo({
-      center: [
-        properties.find((p) => p.property_id === selectedId)?.longitude ?? -73.979,
-        properties.find((p) => p.property_id === selectedId)?.latitude ?? 40.7565,
-      ],
-      zoom: Math.max(map.getZoom(), 14),
-      duration: 400,
-    });
+    if (map.getLayer("fp-fill")) {
+      map.setPaintProperty("fp-fill", "fill-opacity", FP_HIGHLIGHT(selectedId) as never);
+    }
+    if (map.getLayer("prop-points")) {
+      map.setPaintProperty("prop-points", "circle-stroke-color", [
+        "case",
+        ["==", ["get", "id"], selectedId],
+        "#e01e5a",
+        "#334155",
+      ]);
+      map.setPaintProperty("prop-points", "circle-stroke-width", [
+        "case",
+        ["==", ["get", "id"], selectedId],
+        2.5,
+        0.8,
+      ]);
+    }
+    const sel = properties.find((p) => p.property_id === selectedId);
+    if (sel?.longitude != null && sel?.latitude != null) {
+      map.flyTo({
+        center: [sel.longitude, sel.latitude],
+        zoom: Math.max(map.getZoom(), 15),
+        duration: 400,
+      });
+    }
   }, [selectedId, properties]);
 
   return (
     <div className="map-wrap">
       {error && <div className="map-fallback">{error}</div>}
+      {mode === "footprints" && !error && (
+        <div className="map-badge">
+          <span className="swatch" style={{ background: "linear-gradient(90deg,#22d3ee,#34d399,#fbbf24,#fb923c,#f87171)" }} />
+          Building footprints · Site EUI (kBtu/ft²·yr)
+        </div>
+      )}
       <div ref={containerRef} className="map-canvas" data-testid="map" />
     </div>
   );
