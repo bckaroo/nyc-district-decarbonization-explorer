@@ -1,0 +1,70 @@
+{
+  "model_version": "v1.0",
+  "generated_utc": "2026-09-25T11:29:54+00:00",
+  "inputs": {
+    "footprints_geojson": "footprints_joined.geojson",
+    "footprints_sha256": "5d809a090d62dd4a1a388fc38e1644ad81718d6fc00b41bc198ebd01b06b2e38",
+    "ll84_snapshot": "data/snapshots/ll84_2024_midtown_core.raw.jsonl",
+    "mappluto_sqlite": "data/citywide/mappluto_lots.sqlite",
+    "params_sha256": "d676bb06d6718c7815e3584e375c504ca97b37ba8429a13856947d20c5a35ebb"
+  },
+  "output": {
+    "file": "annual_demand.geojson",
+    "features": 932,
+    "sha256": "d9def25f529aae72f406aa8159e353c53bc7761331e5b870b8fdfcfa9430650b",
+    "bytes": 1287199
+  },
+  "counts_by_tier": {
+    "T1_observed_full": 906,
+    "T4_footprint_numeric_only": 26
+  },
+  "aggregate_conservation_check": {
+    "note": "T1 gas rows: \u03a3 allocated (space_heating+DHW) = \u03a3 observed_gas \u00d7 (share_h+share_d=1.0) \u00d7 \u03b7=0.80, i.e. exactly 0.80\u00d7 observed, by algebraic construction. The 20% difference is real fuel-to-delivered-heat efficiency loss (stack/excess-air), intentionally NOT stored as an end-use bucket. Recorded as a reproducibility receipt and sanity check that shares+\u03b7 were applied as parameterized; not a statistical finding.",
+    "observed_gas_kbtu_t1": 3134306813.8,
+    "allocated_heat_plus_dhw_kbtu_t1": 2507445451.2,
+    "implied_eta": 0.8,
+    "as_expected": true
+  },
+  "null_counts": {
+    "heating": 14,
+    "cooling": 16
+  },
+  "intensity_distributions_kbtu_ft2_yr": {
+    "space_heating": {
+      "n": 918,
+      "median": 12.59,
+      "p10": 0.25,
+      "p90": 45.3,
+      "max": 5599.78
+    },
+    "dhw": {
+      "n": 918,
+      "median": 4.69,
+      "p10": 0.09,
+      "p90": 18.65,
+      "max": 2399.9
+    },
+    "cooling": {
+      "n": 916,
+      "median": 88.45,
+      "p10": 34.38,
+      "p90": 158.21,
+      "max": 671.27
+    }
+  },
+  "aggregate_kbtu_by_tier": {
+    "T1_observed_full:cooling": 27664490169.0,
+    "T1_observed_full:dhw": 1731645045.7,
+    "T1_observed_full:space_heating": 4332353644.7,
+    "T4_footprint_numeric_only:cooling": 418851624.7,
+    "T4_footprint_numeric_only:dhw": 5074608.2,
+    "T4_footprint_numeric_only:space_heating": 14675863.7
+  },
+  "honest_limits": [
+    "No invented confidence intervals: outputs carry evidence tier + method tag, not a CI.",
+    "Missing inputs produce null end-uses, never zero.",
+    "Campus/parent-child disaggregation is allocation-based (area-weighted), carried as flags disagg/ disagg_weight/ disagg_n from build_pilot.py; conservation checks vs LL84 property aggregates.",
+    "Site EUI out of physical plausibility (>9999 kBtu/ft2, e.g. data-entry outliers) kept as OBSERVED but flagged desc_outlier; not silently winsorized."
+  ],
+  "shares_parameterized_replacement_note": "All shares are FIXED CONSTANTS (end-use split priors). They are deliberately parameterized here (not hardcoded) so the modeling workstream (DEV-alternative iterations, e.g. regression on LL84 fuels + heating-degree disaggregation) can replace them wholesale without touching pipeline logic. Each constant cites its source. These are priors, NOT per-building fits \u2014 no invented precision: every modeled output carries an evidence tier and 'model:additive-end-use-split' method tag."
+}

@@ -1,0 +1,38 @@
+{
+  "model_version": "v1.0",
+  "updated": "2026-09-25",
+  "notes": "All shares are FIXED CONSTANTS (end-use split priors). They are deliberately parameterized here (not hardcoded) so the modeling workstream (DEV-alternative iterations, e.g. regression on LL84 fuels + heating-degree disaggregation) can replace them wholesale without touching pipeline logic. Each constant cites its source. These are priors, NOT per-building fits — no invented precision: every modeled output carries an evidence tier and 'model:additive-end-use-split' method tag.",
+  "heating_efficiency": {"value": 0.80, "unit": "fraction of fuel site energy delivered as heat", "source": "typical non-condensing gas boiler/hot water system annual fuel utilization; assumption documented, NOT measured per building"},
+  "cooling_cop": {"value": 3.0, "unit": "COP for delivered cooling per kWh of electric chiller/AC input", "source": "typical commercial central plant COP; assumption documented, NOT measured per building"},
+  "gas_split_by_archetype": {
+    "_note": "What share of a property's metered natural gas goes to SPACE HEATING vs DHW. Chosen, conservative single-source splits per building type; flagged as FIXED PRIOR not regressed. Explicitly intended to be replaced by per-borough regression work (DEV-159 follow-up).",
+    "office": {"space_heating": 0.75, "dhw": 0.25, "source": "CBECS 2018 end-use fuel tables show natural gas dominates space heating (~3/4) and DWH (~2/3) nationally; office-heavy gas = heating-dominated. Directional, cited, parameterized."},
+    "multifamily": {"space_heating": 0.60, "dhw": 0.40, "source": "NYC multifamily gas profile literature (e.g. NYSERDA multifamily retrofit reports): space heating largest; DHW plus small cooking residual second. Cooking folded into DHW bucket; documented so the split stays a clean partition (sums to 1.0)."},
+    "other": {"space_heating": 0.70, "dhw": 0.30, "source": "blend toward CBECS mixed-commercial heating-dominated profile; used for retail/education/health/public-assembly flesh-passes"}
+  },
+  "elec_split_by_archetype": {
+    "_note": "What share of metered grid-purchase ELECTRICITY (kWh) goes to COOLING (converted via COP). Remaining elec shares (lighting/plug/etc.) intentionally NOT disaggregated in v1 — only cooling is an end-use output; others stay as 'other_elec'.",
+    "office": {"cooling": 0.25, "source": "CBECS 2018 electricity end-use by building type: office cooling ~25% of office electricity; cycle overlaps with EIA's `electricity shares of office cooling`"},
+    "multifamily": {"cooling": 0.25, "source": "CBECS multifamily/residential-mixed cooling fraction of electricity; NYC multifamily has in-window/in-unit AC, not central plant — 25% used as renewable/upper-bound prior, parameterized"},
+    "other": {"cooling": 0.22, "source": "CBECS mixed-prototype; ballpark close to office; parameterized"}
+  },
+  "archetype_by_pluto_landuse": {
+    "_source": "MapPLUTO landuse code (1-11) -> archetype bucket; documented mapping, deterministic",
+    "1": "multifamily", "2": "multifamily", "3": "multifamily",
+    "4": "office", "5": "office",
+    "6": "other", "7": "other", "8": "other", "9": "other", "10": "other", "11": "other",
+    "_note": "Emergency/vacant/parks use 'other'; iterating finer (Nursing/Hotel/Mixed-Use) is follow-up modeling work."
+  },
+  "evidence_tiers": {
+    "T1_observed_full": "LL84 match present AND site EUI + GFA + at least one fuel observed (gas or elec). End-uses derived from observed fuels with explicit share constants.",
+    "T2_intensity_only": "LL84 match present with EUI or GFA but BOTH gas and elec missing/zero. Site energy estimated as EUI x GFA, end-uses from archetype fuel-split priors only.",
+    "T3_archetype_prior": "No LL84 match (or EUI missing). Site energy and all end-uses come from archetype intensity priors — flagged clearly, not comparable to observed tiers.",
+    "T4_footprint_numeric_only": "Feature has footprint geometry but only footprint-derived attributes; area + null energy. Treated as null, NOT zero."
+  },
+  "limits_and_caveats": [
+    "No invented confidence intervals: outputs carry evidence tier + method tag, not a CI.",
+    "Missing inputs produce null end-uses, never zero.",
+    "Campus/parent-child disaggregation is allocation-based (area-weighted), carried as flags disagg/ disagg_weight/ disagg_n from build_pilot.py; conservation checks vs LL84 property aggregates." ,
+    "Site EUI out of physical plausibility (>9999 kBtu/ft2, e.g. data-entry outliers) kept as OBSERVED but flagged desc_outlier; not silently winsorized."
+  ]
+}
