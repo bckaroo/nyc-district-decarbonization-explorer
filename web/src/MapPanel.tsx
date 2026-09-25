@@ -14,9 +14,9 @@ import {
 } from "./symbology";
 import type { FootFeature } from "./charts";
 import {
-  staticModeSync,
   loadDistricts as loadStaticDistricts,
   netThermalInBbox,
+  staticModeReady,
 } from "./staticData";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -364,7 +364,7 @@ export default function MapPanel({
       // Same response-stamping discipline: a slow older response can never
       // overwrite a newer one.
       let fpReqSeq = 0;
-      const loadFootprints = () => {
+      const loadFootprints = async () => {
         const map = mapRef.current;
         if (!map || !map.getLayer("fp-fill")) return;
         const b = map.getBounds().toArray() as number[][]; // [[sw],[ne]]
@@ -376,11 +376,12 @@ export default function MapPanel({
           max_y: String(b[1][1]),
           limit: "12000",
         });
-        // Live API first; the static Pages build has no backend, so fall back to
-        // the baked layer. Same response shape either way, so the code below is
-        // unchanged. Nulls are preserved in both paths.
+        // Live API first; the static Pages build has no backend, so fall back
+        // to the baked layer. Probing must complete first: this loader fires on
+        // style-load, before the mode probe resolves, so a plain sync check saw
+        // false, requested /api/*, 404'd, and the map stayed empty.
         const bboxUrl = `/api/footprints/bbox?${qs.toString()}`;
-        const load = staticModeSync()
+        const load = (await staticModeReady())
           ? netThermalInBbox(b[0][0], b[0][1], b[1][0], b[1][1], 12000).then(
               (r) => ({
                 bbox: [b[0][0], b[0][1], b[1][0], b[1][1]],
@@ -461,10 +462,10 @@ export default function MapPanel({
       // 273 boundaries is small enough to hold entirely client-side, which also
       // lets the picker list every district regardless of the current view.
       let districtsLoaded = false;
-      const loadDistricts = () => {
+      const loadDistricts = async () => {
         const map = mapRef.current;
         if (!map || !map.getLayer("district-line") || districtsLoaded) return;
-        const dload = staticModeSync()
+        const dload = (await staticModeReady())
           ? loadStaticDistricts().then((fc) => ({
               features: fc.features,
               meta: { note: "Static export: all study boundaries baked in." },

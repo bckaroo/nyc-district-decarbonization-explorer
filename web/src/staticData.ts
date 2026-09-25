@@ -48,35 +48,54 @@ export function staticModeSync(): boolean {
   return staticMode === true;
 }
 
+/**
+ * staticModeSync(), but awaiting the probe first.
+ *
+ * The mode probe is async (one /api/counters fetch), while MapPanel's data
+ * loaders fire on style-load — earlier than the probe resolves. Callers using
+ * plain staticModeSync() there saw `false`, hit /api/*, got 404, and the map
+ * stayed empty: the published symptom. Awaiting here guarantees a decided
+ * probe before choosing a data source.
+ */
+export async function staticModeReady(): Promise<boolean> {
+  await isStaticMode();
+  return staticMode === true;
+}
+
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url, { headers: { Accept: "application/json" } });
   if (!res.ok) throw new Error(`${url}: ${res.status}`);
   return (await res.json()) as T;
 }
 
-// Vite serves the export at the Pages subpath, so data URLs must be relative to
-// the bundle rather than absolute — an absolute /net_thermal.json 404s under
-// /nyc-district-decarbonization-explorer/.
-const url = (name: string) =>
-  new URL(name, import.meta.url).toString();
+// Data files sit next to index.html in the deployed bundle, NOT next to the
+// JS chunk. Two naive forms fail in production:
+//  - import.meta.url resolves against /assets/, whose ../net_thermal.json 404s
+//    under a Pages subpath;
+//  - new URL(name, import.meta.env.BASE_URL) throws "Invalid base URL" in the
+//    built bundle, because BASE_URL is inlined as a RELATIVE string
+//    ("/nyc-.../"), and new URL rejects a relative base.
+// So join the strings directly: BASE_URL is guaranteed to end with "/".
+const resolveDataUrl = (name: string) =>
+  `${import.meta.env.BASE_URL}${name}`;
 
 export async function loadNetThermal(): Promise<GeoJSON.FeatureCollection> {
   if (!netThermalCache) {
-    netThermalCache = await getJson<GeoJSON.FeatureCollection>(url("net_thermal.json"));
+    netThermalCache = await getJson<GeoJSON.FeatureCollection>(resolveDataUrl("net_thermal.json"));
   }
   return netThermalCache;
 }
 
 export async function loadDistricts(): Promise<GeoJSON.FeatureCollection> {
   if (!districtsCache) {
-    districtsCache = await getJson<GeoJSON.FeatureCollection>(url("districts.json"));
+    districtsCache = await getJson<GeoJSON.FeatureCollection>(resolveDataUrl("districts.json"));
   }
   return districtsCache;
 }
 
 export async function loadBuildings(): Promise<Record<string, unknown>> {
   if (!buildingsCache) {
-    buildingsCache = await getJson<Record<string, unknown>>(url("buildings.json"));
+    buildingsCache = await getJson<Record<string, unknown>>(resolveDataUrl("buildings.json"));
   }
   return buildingsCache;
 }
@@ -89,12 +108,12 @@ export async function buildingByBbl(bbl: string): Promise<unknown | null> {
 
 /** The LL84 property table, mirroring GET /api/properties. */
 export async function loadTable(): Promise<{ total: number; properties: unknown[] }> {
-  return getJson<{ total: number; properties: unknown[] }>(url("ll84_table.json"));
+  return getJson<{ total: number; properties: unknown[] }>(resolveDataUrl("ll84_table.json"));
 }
 
 /** Baked export metadata (counts + scope note). */
 export async function loadMeta(): Promise<StaticMeta> {
-  return getJson<StaticMeta>(url("meta.json"));
+  return getJson<StaticMeta>(resolveDataUrl("meta.json"));
 }
 
 /** Bounding-box filter over the baked net-thermal layer. */
