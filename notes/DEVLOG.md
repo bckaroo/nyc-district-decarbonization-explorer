@@ -19,3 +19,19 @@ project **PROJ-026**). New entries go at the top.
   inputs; dist itself gitignored per Vite default).
 - Known follow-ups: no git remote yet (optional promote); port 3320 is dev
   range — register in ports.json if promoted to persistent service.
+
+## Round 2 — 2026-09-25 (hermes)
+
+- Chained footprints build into build_pilot.py: one command now rebuilds the
+  full stack (LL84 snapshot+profile → footprints fetch/join → geojson layer).
+  Online mode refetches footprints too; offline reuses + sha-verifies.
+- Campus disaggregation: for the 53 properties with >1 footprint polygon,
+  GHG/gas/electricity totals are area-weighted across polygons (spherical
+  ring-sum areas in ft²). Intensities (EUI etc.) intentionally stay
+  property-level. Per-feature flags: disagg=area-weighted, disagg_weight,
+  disagg_n. Two bugs found+fixed en route: lat0 passed to cos() in degrees
+  (areas computed 0), and disagg applied twice (weights squared).
+  Conservation verified: worst error 0.0038% (GHG), 0.0000% (gas/elec).
+- Promoted to private GitHub remote bckaroo/signalnyc (main, all commits
+  pushed, doctor: OK, 0 dirty, 0 unpushed).
+- Tests 63/63. Live on :3320 (tailscale serve active).
