@@ -16,22 +16,51 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 const DEFAULT_THEME_ID = "site_eui_kbtu_ft";
 
-// Public raster demo tiles: remote dependency, documented in README. If tiles
-// fail the map shows an error banner and the table stays fully functional.
+// Minimal grey canvas basemap: geography only, no labels and no street-level
+// detail, so the energy fills are the only thing competing for attention.
+//
+// Why a DARK grey canvas rather than a light one: the diverging net-thermal
+// ramp puts WHITE at zero (heating/cooling in balance), so light-grey
+// buildings would vanish into a light basemap and the neutral band would be
+// unreadable. A neutral dark grey keeps white, blue and red all legible.
+//
+// Carto's `_nolabels` raster is the muted set. It is a remote dependency
+// (documented in README); if it fails the background grey still paints and
+// every data layer renders on it, so tile failure degrades gracefully
+// instead of blanking the map.
 const PUBLIC_STYLE: StyleSpecification = {
   version: 8,
   sources: {
-    osm: {
+    canvas: {
       type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tiles: [
+        // NB: no `{r}` placeholder — that is Leaflet syntax; MapLibre only
+        // substitutes {z}/{x}/{y}. Carto's CDN tolerates the extra suffix but
+        // the value is never defined in MapLibre.
+        "https://basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png",
+      ],
       tileSize: 256,
       maxzoom: 19,
-      attribution: "© OpenStreetMap contributors",
+      attribution: "© OpenStreetMap contributors © CARTO",
     },
   },
   layers: [
-    { id: "bg", type: "background", paint: { "background-color": "#141924" } },
-    { id: "osm", type: "raster", source: "osm", paint: { "raster-opacity": 0.75 } },
+    // Fallback canvas colour, also tints slightly through the raster.
+    { id: "bg", type: "background", paint: { "background-color": "#242830" } },
+    {
+      id: "canvas",
+      type: "raster",
+      source: "canvas",
+      paint: {
+        // Slight desaturation/muting so the canvas reads as flat grey
+        // instead of Carto's default navy.
+        "raster-opacity": 0.9,
+        "raster-saturation": -0.75,
+        "raster-contrast": -0.1,
+        "raster-brightness-min": 0.08,
+        "raster-brightness-max": 0.78,
+      },
+    },
   ],
 };
 
@@ -158,7 +187,9 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
               type: "line",
               source: "footprints",
               paint: {
-                "line-color": "#0b0e14",
+                // Slightly soft outline: enough to separate adjoining
+                // footprints, not a hard black grid over the data.
+                "line-color": "#3a4048",
                 "line-width": 0.7,
                 "line-opacity": 0.6,
               },
@@ -212,7 +243,7 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
           type: "fill",
           source: "parcels",
           paint: {
-            "fill-color": "#5f7d95",
+            "fill-color": "#6b7280",
             "fill-opacity": [
               "case",
               ["get", "has_ll84"],
