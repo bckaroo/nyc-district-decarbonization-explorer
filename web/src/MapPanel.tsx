@@ -28,7 +28,7 @@ function euiColorExpr(): unknown {
   return [
     "interpolate",
     ["linear"],
-    ["to-number", ["get", "eui"]],
+    ["to-number", ["get", "site_eui_kbtu_ft"]],
     0, "#22d3ee",
     60, "#34d399",
     100, "#fbbf24",
@@ -41,7 +41,7 @@ const FP_HIGHLIGHT = (selectedId: string | null): unknown => [
   "case",
   ["==", ["get", "pid"], selectedId ?? "__none__"],
   0.92,
-  ["!", ["has", "eui"]],
+  ["!", ["has", "site_eui_kbtu_ft"]],
   0.12,
   0.55,
 ];
