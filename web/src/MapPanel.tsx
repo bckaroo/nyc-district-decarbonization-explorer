@@ -24,24 +24,31 @@ const DEFAULT_THEME_ID = "site_eui_kbtu_ft";
 // buildings would vanish into a light basemap and the neutral band would be
 // unreadable. A neutral dark grey keeps white, blue and red all legible.
 //
-// Carto's `_nolabels` raster is the muted set. It is a remote dependency
-// (documented in README); if it fails the background grey still paints and
-// every data layer renders on it, so tile failure degrades gracefully
-// instead of blanking the map.
+// Provider: Esri "World Dark Gray Canvas" — a genuine grey canvas with no
+// labels, and key-free (no signup, no token). Carto's `_nolabels` endpoint
+// was tried first but now serves a byte-identical placeholder tile at every
+// coordinate (an API-key notice, not map data) — verified by md5-comparing
+// tiles from five different z/x/y positions. Esri returns distinct real tiles
+// per coordinate, so prefer it here.
+//
+// GOTCHA: Esri's tile template is {z}/{y}/{x} — y BEFORE x, the reverse of
+// MapLibre's usual {z}/{x}/{y}. Writing {z}/{x}/{y} here silently requests
+// the wrong tiles.
+//
+// Remote dependency (documented in README). If tiles fail the background
+// grey still paints and every data layer renders on it, so failure degrades
+// gracefully instead of blanking the map.
 const PUBLIC_STYLE: StyleSpecification = {
   version: 8,
   sources: {
     canvas: {
       type: "raster",
       tiles: [
-        // NB: no `{r}` placeholder — that is Leaflet syntax; MapLibre only
-        // substitutes {z}/{x}/{y}. Carto's CDN tolerates the extra suffix but
-        // the value is never defined in MapLibre.
-        "https://basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png",
+        "https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}",
       ],
       tileSize: 256,
-      maxzoom: 19,
-      attribution: "© OpenStreetMap contributors © CARTO",
+      maxzoom: 16,
+      attribution: "Esri, HERE, Garmin, © OpenStreetMap contributors",
     },
   },
   layers: [
@@ -52,13 +59,11 @@ const PUBLIC_STYLE: StyleSpecification = {
       type: "raster",
       source: "canvas",
       paint: {
-        // Slight desaturation/muting so the canvas reads as flat grey
-        // instead of Carto's default navy.
-        "raster-opacity": 0.9,
-        "raster-saturation": -0.75,
-        "raster-contrast": -0.1,
-        "raster-brightness-min": 0.08,
-        "raster-brightness-max": 0.78,
+        // Light muting only: this tile set is already near-monochrome, so
+        // keep it legible and just settle it toward flat grey.
+        "raster-opacity": 1.0,
+        "raster-saturation": -0.4,
+        "raster-contrast": -0.05,
       },
     },
   ],
