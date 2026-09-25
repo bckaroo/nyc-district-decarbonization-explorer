@@ -12,9 +12,10 @@ import {
   opacityExpr,
   type ThemeDef,
 } from "./symbology";
+import type { FootFeature } from "./charts";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-const DEFAULT_THEME_ID = "site_eui_kbtu_ft";
+export const DEFAULT_THEME_ID = "site_eui_kbtu_ft";
 
 // Minimal grey canvas basemap: geography only, no labels and no street-level
 // detail, so the energy fills are the only thing competing for attention.
@@ -90,9 +91,19 @@ interface Props {
   properties: PropertySummary[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  themeId: string;
+  onThemeChange: (id: string) => void;
+  onFeaturesChange?: (features: FootFeature[]) => void;
 }
 
-export default function MapPanel({ properties, selectedId, onSelect }: Props) {
+export default function MapPanel({
+  properties,
+  selectedId,
+  onSelect,
+  themeId,
+  onThemeChange,
+  onFeaturesChange,
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   // Latest props, so async layer-attachment uses current data (stale-closure fix)
@@ -106,7 +117,6 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
   const [parcelState, setParcelState] = useState<
     { loaded: number; truncated: boolean } | null
   >(null);
-  const [themeId, setThemeId] = useState<string>(DEFAULT_THEME_ID);
   const theme = getTheme(themeId) ?? OBSERVED_THEMES[0];
   propsRef.current = { properties, selectedId, theme };
 
@@ -168,6 +178,9 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
             );
             if (!feats.length) return;
             setMode("footprints");
+            // Hand the served footprints up to App so the analysis rail
+            // summarizes the SAME features the map paints, not a re-derivation.
+            onFeaturesChange?.(feats as unknown as FootFeature[]);
             map.addSource("footprints", {
               type: "geojson",
               data: {
@@ -403,6 +416,19 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The map lives in a CSS-grid cell, so its box changes when the window
+  // resizes (and when the table/rail proportions shift). MapLibre only reads
+  // its container size at init and on invalidateSize, so without this the
+  // canvas keeps stale dimensions and renders clipped or blank.
+  useEffect(() => {
+    const map = mapRef.current;
+    const el = containerRef.current;
+    if (!map || !el) return;
+    const ro = new ResizeObserver(() => map.resize());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   function setFeatures(props = propsRef.current.properties) {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
@@ -480,7 +506,7 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
             id="symbology-select"
             data-testid="symbology-select"
             value={themeId}
-            onChange={(e) => setThemeId(e.target.value)}
+            onChange={(e) => onThemeChange(e.target.value)}
           >
             <optgroup label="Observed (LL84 reported)">
               {OBSERVED_THEMES.map((t) => (

@@ -8,7 +8,9 @@ import {
   type PropertySummary,
   type SnapshotInfo,
 } from "./api";
-import MapPanel from "./MapPanel";
+import MapPanel, { DEFAULT_THEME_ID } from "./MapPanel";
+import Charts, { type FootFeature } from "./charts";
+import { getTheme, OBSERVED_THEMES } from "./symbology";
 import "./app.css";
 
 type SortKey =
@@ -48,6 +50,11 @@ export default function App() {
   const [sortAsc, setSortAsc] = useState(true);
   const [selected, setSelected] = useState<PropertyDetail | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Theme lives here (not in MapPanel) so the map and the analysis rail
+  // describe the same layer at all times.
+  const [themeId, setThemeId] = useState<string>(DEFAULT_THEME_ID);
+  const theme = getTheme(themeId) ?? OBSERVED_THEMES[0];
+  const [features, setFeatures] = useState<FootFeature[]>([]);
 
   useEffect(() => {
     api.snapshot().then(setSnapshot).catch(() => setSnapshot(null));
@@ -162,59 +169,88 @@ export default function App() {
         {error && <span className="error">Error: {error}</span>}
       </section>
 
+      {/*
+        Layout: map across the top, table along the bottom, analysis rail
+        pinned on the right spanning both. The rail is what makes this
+        readable at a glance instead of table-first.
+      */}
       <main className="main">
-        <div className="table-pane">
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  {COLUMNS.map((c) => (
-                    <th
-                      key={c.key}
-                      onClick={() => clickSort(c.key)}
-                      className={c.key === sortKey ? (sortAsc ? "sorted-asc" : "sorted-desc") : ""}
-                    >
-                      {c.label}
-                      {c.key === sortKey && (sortAsc ? " ▲" : " ▼")}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((p) => (
-                  <tr
-                    key={p.property_id}
-                    onClick={() => selectRow(p.property_id)}
-                    className={p.property_id === selectedId ? "selected" : ""}
-                  >
-                    <td>
-                      {p.address_1 ?? "—"}
-                      {p.bin_count > 1 && (
-                        <span className="tag campus" title={`${p.bin_count} buildings under this campus property`}>
-                          {" "}· {p.bin_count} BINs
-                        </span>
-                      )}
-                      {p.missing_fields.length > 0 && (
-                        <span className="tag miss" title={`Missing in source: ${p.missing_fields.join(", ")}`}>
-                          {" "}· partial
-                        </span>
-                      )}
-                    </td>
-                    <td className="num">{fmtCell(p.site_eui_kbtu_ft)}</td>
-                    <td className="num">{fmtCell(p.total_ghg_tco2e)}</td>
-                    <td className="num">{fmtCell(p.gfa_sqft)}</td>
-                    <td className="num">{fmtCell(p.electricity_kbtu)}</td>
-                    <td className="num">{fmtCell(p.natural_gas_kbtu)}</td>
+        <div className="work-area">
+          <div className="map-pane">
+            <MapPanel
+              properties={sorted}
+              selectedId={selectedId}
+              onSelect={selectRow}
+              themeId={themeId}
+              onThemeChange={setThemeId}
+              onFeaturesChange={setFeatures}
+            />
+          </div>
+
+          <div className="table-pane">
+            <div className="pane-head">
+              <h2>Properties</h2>
+              <span className="pane-sub">
+                one row = one reporting property (may be a campus)
+              </span>
+            </div>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    {COLUMNS.map((c) => (
+                      <th
+                        key={c.key}
+                        onClick={() => clickSort(c.key)}
+                        className={c.key === sortKey ? (sortAsc ? "sorted-asc" : "sorted-desc") : ""}
+                      >
+                        {c.label}
+                        {c.key === sortKey && (sortAsc ? " ▲" : " ▼")}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {sorted.length === 0 && !loading && <p className="empty">No matching properties.</p>}
+                </thead>
+                <tbody>
+                  {sorted.map((p) => (
+                    <tr
+                      key={p.property_id}
+                      onClick={() => selectRow(p.property_id)}
+                      className={p.property_id === selectedId ? "selected" : ""}
+                    >
+                      <td>
+                        {p.address_1 ?? "—"}
+                        {p.bin_count > 1 && (
+                          <span className="tag campus" title={`${p.bin_count} buildings under this campus property`}>
+                            {" "}· {p.bin_count} BINs
+                          </span>
+                        )}
+                        {p.missing_fields.length > 0 && (
+                          <span className="tag miss" title={`Missing in source: ${p.missing_fields.join(", ")}`}>
+                            {" "}· partial
+                          </span>
+                        )}
+                      </td>
+                      <td className="num">{fmtCell(p.site_eui_kbtu_ft)}</td>
+                      <td className="num">{fmtCell(p.total_ghg_tco2e)}</td>
+                      <td className="num">{fmtCell(p.gfa_sqft)}</td>
+                      <td className="num">{fmtCell(p.electricity_kbtu)}</td>
+                      <td className="num">{fmtCell(p.natural_gas_kbtu)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {sorted.length === 0 && !loading && <p className="empty">No matching properties.</p>}
+            </div>
           </div>
         </div>
 
-        <div className="side-pane">
-          <MapPanel properties={sorted} selectedId={selectedId} onSelect={selectRow} />
+        <div className="viz-pane">
+          <Charts
+            features={features}
+            theme={theme}
+            selectedId={selectedId}
+            onSelect={selectRow}
+          />
           {selected && (
             <aside className="dossier" aria-label="Property dossier">
               <h2>{selected.address_1 ?? "(address not reported)"}</h2>

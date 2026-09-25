@@ -1,6 +1,6 @@
 {
   "model_version": "v1.0",
-  "generated_utc": "2026-09-25T13:11:07+00:00",
+  "generated_utc": "2026-09-25T13:25:50+00:00",
   "inputs": {
     "footprints_geojson": "footprints_joined.geojson",
     "footprints_sha256": "e31d842f948c6d31da1e92b912341867e7c4433b2cdc51c90a8ad71000532937",
@@ -11,8 +11,8 @@
   "output": {
     "file": "annual_demand.geojson",
     "features": 932,
-    "sha256": "a46e58c20ddf1b8e677c536edd82cfb098ba910f33558b2e0c9d2659090c606a",
-    "bytes": 1542272
+    "sha256": "d6d43d8523b2bdb9ba5bb22185698071602fa6d19682a496a21ae92fb1f75a8c",
+    "bytes": 1548848
   },
   "counts_by_tier": {
     "T1_observed_full": 922,

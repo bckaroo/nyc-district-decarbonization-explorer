@@ -1,7 +1,7 @@
 {
   "base": "footprints_joined.geojson",
   "demand_source": "data/citywide/annual_demand_pilot/annual_demand.geojson",
-  "demand_source_sha256": "a46e58c20ddf1b8e677c536edd82cfb098ba910f33558b2e0c9d2659090c606a",
+  "demand_source_sha256": "d6d43d8523b2bdb9ba5bb22185698071602fa6d19682a496a21ae92fb1f75a8c",
   "donor_fields": [
     "space_heating_kbtu",
     "dhw_kbtu",
@@ -18,8 +18,8 @@
   "features": 932,
   "matched_demand_pid": 932,
   "model_version": "v1.0",
-  "generated_utc": "2026-09-25T13:11:07+00:00",
-  "sha256": "d872a31e31c7fb3d84ad09a2aa82a65bccd00da425ba65df6813dd55760d3e8a",
-  "bytes": 1573890,
+  "generated_utc": "2026-09-25T13:25:50+00:00",
+  "sha256": "b06f231d260555426b44d50dcfe76c9d610de887d9b6df14d6334e6f6306f4dd",
+  "bytes": 1580466,
   "note": "Demand fields are MODELED/ESTIMATED (archetype shares constrained by LL84, eta=0.8 gas, COP cooling) \u2014 NOT measured. evidence_tier donor field labels each row's input quality."
 }

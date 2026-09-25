@@ -101,17 +101,167 @@ html, body, #root {
 }
 .error { color: var(--bad); font-size: 0.78rem; }
 
-/* ---------- Main layout ---------- */
-.main { display: flex; flex: 1; min-height: 0; }
+/* ---------- Main layout ----------
+   Map across the top, table along the bottom, analysis rail on the right
+   spanning both rows. The rail is fixed-width so the map keeps a predictable
+   aspect as the window resizes. */
+.main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(300px, 26vw, 380px);
+  flex: 1;
+  min-height: 0;
+  gap: 0;
+}
 
-/* ---------- Table pane ---------- */
-.table-pane {
-  flex: 1.45;
+.work-area {
+  display: grid;
+  grid-template-rows: minmax(240px, 52%) minmax(160px, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ---------- Map pane (top) ---------- */
+.map-pane {
+  position: relative;
+  min-height: 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+/* ---------- Analysis rail (right) ---------- */
+.viz-pane {
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border-soft);
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: var(--panel);
+  padding: 10px;
+  gap: 10px;
 }
+
+.viz-rail { display: flex; flex-direction: column; gap: 10px; }
+
+.viz-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px;
+}
+.viz-head h2 {
+  margin: 0; font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.viz-scope { font-size: 0.66rem; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+.viz-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 11px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.viz-card h3 {
+  margin: 0; font-size: 0.78rem; font-weight: 650; color: var(--text);
+  line-height: 1.25;
+}
+.viz-units { font-size: 0.66rem; color: var(--faint); margin-top: -4px; }
+.viz-note {
+  margin: 0; font-size: 0.64rem; line-height: 1.4; color: var(--faint);
+}
+.viz-svg { width: 100%; height: auto; display: block; }
+.viz-tick { font-size: 8px; font-family: inherit; }
+.viz-legend {
+  display: flex; flex-wrap: wrap; gap: 4px 12px;
+  font-size: 0.62rem; color: var(--muted);
+}
+.viz-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.viz-legend i {
+  width: 9px; height: 9px; border-radius: 2px; display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Summary stat strip */
+.stat-strip { display: flex; gap: 6px; }
+.stat {
+  flex: 1; min-width: 0;
+  background: rgba(255,255,255,.03);
+  border-radius: 5px;
+  padding: 5px 7px;
+  display: flex; flex-direction: column; gap: 1px;
+}
+.stat-k {
+  font-size: 0.58rem; text-transform: uppercase; letter-spacing: 0.05em;
+  color: var(--faint);
+}
+.stat-v {
+  font-size: 0.82rem; font-weight: 650; color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Net thermal split bar */
+.split-bar {
+  display: flex; height: 16px; border-radius: 4px; overflow: hidden;
+  border: 1px solid var(--border-soft);
+}
+.split-cool { background: #3b82f6; }
+.split-heat { background: #ef4444; }
+.split-labels {
+  display: flex; justify-content: space-between;
+  font-size: 0.66rem; font-variant-numeric: tabular-nums;
+}
+.split-labels b { font-weight: 700; }
+
+/* Fuel mix bars */
+.mix-rows { display: flex; flex-direction: column; gap: 5px; }
+.mix-row { display: grid; grid-template-columns: 1fr; gap: 2px; }
+.mix-label { font-size: 0.66rem; color: var(--muted); }
+.mix-track {
+  display: block; height: 7px; background: rgba(255,255,255,.05);
+  border-radius: 3px; overflow: hidden;
+}
+.mix-fill { display: block; height: 100%; border-radius: 3px; }
+.mix-val {
+  font-size: 0.64rem; color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Top-N list */
+.top-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.top-btn {
+  width: 100%; display: flex; justify-content: space-between; gap: 8px;
+  align-items: baseline;
+  background: none; border: 0; border-radius: 4px;
+  padding: 3px 5px; cursor: pointer;
+  color: var(--text); font: inherit; text-align: left;
+}
+.top-btn:hover { background: var(--hover); }
+.top-btn.active { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.top-name {
+  font-size: 0.7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.top-val {
+  font-size: 0.7rem; font-weight: 650; color: var(--muted);
+  font-variant-numeric: tabular-nums; flex-shrink: 0;
+}
+
+/* ---------- Table pane (bottom) ---------- */
+.table-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--panel);
+}
+.pane-head {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 7px 14px 6px;
+  border-bottom: 1px solid var(--border-soft);
+  background: var(--panel-2);
+}
+.pane-head h2 {
+  margin: 0; font-size: 0.72rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+}
+.pane-sub { font-size: 0.66rem; color: var(--faint); }
 .table-scroll { overflow: auto; flex: 1; }
 table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 thead th {
@@ -164,17 +314,9 @@ td .dim { color: var(--faint); }
 .tag.miss { background: rgba(251,191,36,.12); color: var(--warn); }
 
 /* ---------- Side pane ---------- */
-.side-pane {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 340px;
-  max-width: 460px;
-  background: var(--panel);
-}
 
 /* Map */
-.map-wrap { position: relative; flex: 1; min-height: 300px; }
+.map-wrap { position: absolute; inset: 0; }
 .map-canvas { position: absolute; inset: 0; }
 .map-canvas canvas { outline: none; }
 .map-fallback {
@@ -204,10 +346,12 @@ td .dim { color: var(--faint); }
 
 /* Dossier */
 .dossier {
-  padding: 16px 20px;
+  padding: 12px 13px;
   overflow: auto;
-  border-top: 1px solid var(--border-soft);
-  max-height: 55%;
+  flex-shrink: 0;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
 }
 .dossier h2 { margin: 0 0 2px; font-size: 1rem; font-weight: 650; }
 .dossier .sub { color: var(--muted); font-size: 0.75rem; margin-bottom: 10px; }

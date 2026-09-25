@@ -173,8 +173,25 @@ def model_one(props: dict, landuse_map: dict) -> dict:
         "cooling_kbtu": round(modeled["cooling"], 1) if modeled.get("cooling") is not None else None,
         "evidence_tier": tier,
         "archetype": arch,
-        "method_heating": "gas_split×η" if obs_gas else ("intensity_prior×η" if site_est else None),
-        "method_cooling": "elec×share×3.412kWh→kBtu" if obs_elec else None,
+        "method_heating": (
+            "+".join(
+                m for m in (
+                    "gas_split×η" if obs_gas else None,
+                    "district_steam×η" if obs_steam else None,
+                    "district_dhw×η" if obs_district_dhw else None,
+                    "fuel_oil×split×η" if obs_oil else None,
+                    "intensity_prior×η" if (site_est and not (obs_steam or obs_oil or obs_district_dhw)) else None,
+                ) if m
+            ) or None
+        ),
+        "method_cooling": (
+            "+".join(
+                m for m in (
+                    "elec_kBtu×share×COP" if obs_elec else None,
+                    "district_chilled_water(delivered)" if obs_chilled else None,
+                ) if m
+            ) or None
+        ),
         "model_version": MODEL_VERSION,
     }
     if gfa:
