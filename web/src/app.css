@@ -344,6 +344,34 @@ td .dim { color: var(--faint); }
 .maplibregl-ctrl-attrib { font-size: 10px !important; background: rgba(11,14,20,.7) !important; }
 .maplibregl-ctrl-attrib a { color: var(--muted) !important; }
 
+/* District study-boundary overlay panel (BIDs + campuses). Sits above the
+   symbology panel; the swatch colors match the map's match-expression. */
+.map-district-panel {
+  position: absolute;
+  top: 10px; left: 10px;
+  z-index: 11;
+  max-width: 260px;
+  background: rgba(11,14,20,.82);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  color: #cbd5e1;
+}
+.map-district-panel input[type="checkbox"] { vertical-align: middle; margin-right: 2px; }
+.map-district-legend {
+  display: flex; gap: 12px; margin-top: 5px; color: #9fb8c8; font-size: 0.68rem;
+}
+.map-district-legend .dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  margin-right: 4px; vertical-align: middle;
+}
+.map-district-legend .dot.bid { background: #38bdf8; }
+.map-district-legend .dot.campus { background: #f59e0b; }
+.map-district-note {
+  margin: 6px 0 0; line-height: 1.35; color: #8ba3b5; font-size: 0.66rem;
+}
+
 /* Dossier */
 .dossier {
   padding: 12px 13px;

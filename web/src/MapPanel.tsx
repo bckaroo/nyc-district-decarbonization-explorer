@@ -94,6 +94,8 @@ interface Props {
   themeId: string;
   onThemeChange: (id: string) => void;
   onFeaturesChange?: (features: FootFeature[]) => void;
+  /** Fired when a predefined study boundary (BID/campus) is clicked. */
+  onDistrictSelect?: (districtId: string) => void;
 }
 
 export default function MapPanel({
@@ -103,6 +105,7 @@ export default function MapPanel({
   themeId,
   onThemeChange,
   onFeaturesChange,
+  onDistrictSelect,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -120,6 +123,10 @@ export default function MapPanel({
   const [footprintState, setFootprintState] = useState<
     { loaded: number; matched: number; truncated: boolean } | null
   >(null);
+  const [districtSummary, setDistrictSummary] = useState<
+    { total: number; bids: number; campuses: number; note: string } | null
+  >(null);
+  const [districtsVisible, setDistrictsVisible] = useState(false);
   const theme = getTheme(themeId) ?? OBSERVED_THEMES[0];
   propsRef.current = { properties, selectedId, theme };
 
@@ -284,6 +291,58 @@ export default function MapPanel({
             if (match) onSelect(match.property_id);
           }
         });
+
+        // --- predefined district study boundaries (BIDs + campuses) ---------
+        // Served whole rather than by bbox: the layer is ~3 MB for 273
+        // boundaries and a study picker needs every name, not just what is in
+        // view. Drawn as an OUTLINE over the footprint fills: the footprints
+        // underneath carry the energy symbology, so the fill here is kept
+        // almost transparent and the boundary reads as a dashed border.
+        map.addSource("districts", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        const districtColor: maplibregl.ExpressionSpecification = [
+          "match",
+          ["get", "kind"],
+          "bid",
+          "#38bdf8",
+          "campus",
+          "#f59e0b",
+          "#94a3b8",
+        ];
+        map.addLayer({
+          id: "district-fill",
+          type: "fill",
+          source: "districts",
+          // Starts OFF: boundaries are opt-in context, not the default view.
+          layout: { visibility: "none" },
+          paint: { "fill-color": districtColor, "fill-opacity": 0.07 },
+        });
+        map.addLayer({
+          id: "district-line",
+          type: "line",
+          source: "districts",
+          layout: { visibility: "none" },
+          paint: {
+            "line-color": districtColor,
+            "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.6, 14, 1.4, 17, 2.4],
+            "line-opacity": 0.95,
+            "line-dasharray": [2, 1],
+          },
+        });
+        map.on("click", "district-fill", (e) => {
+          const p = e.features?.[0]?.properties as Record<string, unknown> | undefined;
+          if (typeof p?.district_id === "string") onDistrictSelect?.(p.district_id);
+        });
+        map.on("mouseenter", "district-fill", () => {
+          const m = mapRef.current;
+          if (m) m.getCanvas().style.cursor = "pointer";
+        });
+        map.on("mouseleave", "district-fill", () => {
+          const m = mapRef.current;
+          if (m) m.getCanvas().style.cursor = "";
+        });
         setFeatures(propsRef.current.properties);
       };
 
@@ -368,6 +427,46 @@ export default function MapPanel({
         map.on("moveend", scheduleFootprints);
       };
       startFootprintWiring();
+
+      // ---- predefined district boundaries: fetched once, not per-viewport ---
+      // 273 boundaries is small enough to hold entirely client-side, which also
+      // lets the picker list every district regardless of the current view.
+      let districtsLoaded = false;
+      const loadDistricts = () => {
+        const map = mapRef.current;
+        if (!map || !map.getLayer("district-line") || districtsLoaded) return;
+        fetch("/api/districts")
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+          .then((d: { features?: unknown[]; meta?: Record<string, unknown> }) => {
+            if (cancelled) return;
+            const cur = mapRef.current;
+            const src = cur?.getSource("districts") as
+              | maplibregl.GeoJSONSource
+              | undefined;
+            if (!src) return;
+            const feats = (d.features ?? []) as Array<import("geojson").Feature>;
+            src.setData({ type: "FeatureCollection", features: feats });
+            districtsLoaded = true;
+            setDistrictSummary({
+              total: feats.length,
+              bids: Number(d.meta?.bid_count ?? 0),
+              campuses: Number(d.meta?.campus_count ?? 0),
+              note: String(d.meta?.note ?? ""),
+            });
+          })
+          .catch((err: unknown) =>
+            console.error("[map] district boundaries fetch failed:", err)
+          );
+      };
+      const startDistrictWiring = () => {
+        if (cancelled) return;
+        if (!mapRef.current || !mapRef.current.getLayer("district-line")) {
+          setTimeout(startDistrictWiring, 500);
+          return;
+        }
+        loadDistricts();
+      };
+      startDistrictWiring();
 
       // Prefetch-on-move with response stamping so a slow older response can
       // never overwrite a newer one (async stale-closure fix).
@@ -535,6 +634,24 @@ export default function MapPanel({
     else map.once("load", apply);
   }, [properties]);
 
+  // Toggle the district study-boundary overlay. Visibility is driven off the
+  // layer's own `visibility` property so both the fill and its outline move
+  // together, and it is applied once the style is ready (the layers are added
+  // by the style-load handler, so an early toggle would find nothing).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      for (const id of ["district-fill", "district-line"]) {
+        if (map.getLayer(id)) {
+          map.setLayoutProperty(id, "visibility", districtsVisible ? "visible" : "none");
+        }
+      }
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("load", apply);
+  }, [districtsVisible]);
+
   // highlight selection (polygons + points), fly to selection
   useEffect(() => {
     const map = mapRef.current;
@@ -582,6 +699,36 @@ export default function MapPanel({
             ? ` of ${footprintState.matched.toLocaleString("en-US")}`
             : ""}
           {footprintState.truncated ? " (view truncated — zoom in)" : ""}
+        </div>
+      )}
+      {districtSummary && !error && (
+        <div className="map-district-panel" data-testid="district-panel">
+          <label className="symbology-select-label">
+            <input
+              type="checkbox"
+              data-testid="district-toggle"
+              checked={districtsVisible}
+              onChange={(e) => setDistrictsVisible(e.target.checked)}
+            />{" "}
+            Study boundaries ({districtSummary.total})
+          </label>
+          <div className="map-district-legend">
+            <span>
+              <i className="dot bid" /> BIDs {districtSummary.bids}
+            </span>
+            <span>
+              <i className="dot campus" /> Campuses {districtSummary.campuses}
+            </span>
+          </div>
+          {/* Semantics stated in the UI, not just the payload: these are study
+              areas, never thermal districts. */}
+          {districtsVisible && (
+            <p className="map-district-note" data-testid="district-note">
+              Boundaries are study areas only — BIDs are administrative and
+              campuses are derived from contiguous common ownership. Neither
+              implies shared heating/cooling infrastructure.
+            </p>
+          )}
         </div>
       )}
       {mode === "footprints" && !error && (

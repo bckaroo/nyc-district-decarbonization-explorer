@@ -55,6 +55,14 @@ export default function App() {
   const [themeId, setThemeId] = useState<string>(DEFAULT_THEME_ID);
   const theme = getTheme(themeId) ?? OBSERVED_THEMES[0];
   const [features, setFeatures] = useState<FootFeature[]>([]);
+  // Predefined study boundary clicked on the map (BID / campus). Kept at App
+  // level so the rail can summarize the district alongside the property dossier.
+  const [district, setDistrict] = useState<{
+    properties: Record<string, unknown>;
+    footprints: FootFeature[];
+    footprintsInBbox: number;
+    basis: string;
+  } | null>(null);
 
   useEffect(() => {
     api.snapshot().then(setSnapshot).catch(() => setSnapshot(null));
@@ -118,6 +126,32 @@ export default function App() {
   }
 
   const truncated = total > rows.length;
+
+  // Open a predefined study boundary: fetches the district's footprints so the
+  // rail can summarize it. The API labels the count as bounding-box based
+  // rather than true polygon containment, and that label rides through.
+  function selectDistrict(districtId: string) {
+    fetch(`/api/districts/${encodeURIComponent(districtId)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then(
+        (d: {
+          district?: Record<string, unknown>;
+          footprints?: FootFeature[];
+          footprints_in_bbox?: number;
+          basis?: string;
+        }) =>
+          setDistrict({
+            properties: d.district ?? {},
+            footprints: d.footprints ?? [],
+            footprintsInBbox: d.footprints_in_bbox ?? 0,
+            basis: d.basis ?? "",
+          })
+      )
+      .catch((err: unknown) => {
+        console.error("[app] district fetch failed:", err);
+        setDistrict(null);
+      });
+  }
 
   return (
     <div className="app">
@@ -184,6 +218,7 @@ export default function App() {
               themeId={themeId}
               onThemeChange={setThemeId}
               onFeaturesChange={setFeatures}
+              onDistrictSelect={selectDistrict}
             />
           </div>
 
@@ -251,6 +286,46 @@ export default function App() {
             selectedId={selectedId}
             onSelect={selectRow}
           />
+          {district && (
+            <aside className="dossier" aria-label="District study summary" data-testid="district-dossier">
+              <h2>{String(district.properties.campus_name ?? district.properties.bid_name ?? "Study boundary")}</h2>
+              <dl>
+                <dt>Boundary type</dt>
+                <dd>{String(district.properties.kind ?? "—")}</dd>
+                <dt>Borough</dt>
+                <dd>{String(district.properties.borough ?? "—")}</dd>
+                {district.properties.owner_label ? (
+                  <>
+                    <dt>Owner</dt>
+                    <dd>{String(district.properties.owner_label)}</dd>
+                    <dt>Provenance</dt>
+                    <dd>{String(district.properties.provenance ?? "—")}</dd>
+                  </>
+                ) : null}
+                <dt>Footprints (bbox)</dt>
+                <dd>{district.footprintsInBbox.toLocaleString("en-US")}</dd>
+                <dt>Modeled in set</dt>
+                <dd>
+                  {district.footprints
+                    .filter(
+                      (f) =>
+                        (f.properties as Record<string, unknown>)?.net_thermal_kbtu_ft2_yr !=
+                        null
+                    )
+                    .length.toLocaleString("en-US")}
+                </dd>
+              </dl>
+              <p className="dossier-note">
+                {String(district.properties.disclaimer ?? "")}
+              </p>
+              {district.basis === "bounding_box" && (
+                <p className="dossier-note">
+                  Count is bounding-box based, not polygon containment — a
+                  footprint straddling the boundary is included.
+                </p>
+              )}
+            </aside>
+          )}
           {selected && (
             <aside className="dossier" aria-label="Property dossier">
               <h2>{selected.address_1 ?? "(address not reported)"}</h2>
