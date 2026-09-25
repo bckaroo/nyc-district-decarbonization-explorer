@@ -61,6 +61,7 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
     let cancelled = false;
+    let tileErrorCount = 0;
     try {
       const map = new maplibregl.Map({
         container: containerRef.current,
@@ -71,10 +72,20 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
       });
       mapRef.current = map;
       map.on("error", (e) => {
-        // tile/status errors: degrade, don't crash
-        if (!cancelled && e?.error) setError("Map tiles failed to load — table remains available.");
+        // Tile fetch failures arrive here; on mobile networks they can be slow
+        // or blocked entirely. The style still activates (background layer),
+        // so degrade gracefully: banner after repeated failures, but data
+        // layers still load — we no longer gate everything on pristine tiles.
+        if (!cancelled && e?.error) {
+          tileErrorCount += 1;
+          if (tileErrorCount >= 4) {
+            setError("Map tiles are slow or blocked — data layers may still render.");
+          }
+        }
       });
-      map.on("load", () => {
+      // Style 'load' can be delayed by slow raster tiles on mobile networks.
+      // Add data sources as soon as the style is USABLE, not fully loaded.
+      const addDataLayers = () => {
         if (cancelled) return;
         // --- footprint polygons (fetched from /api/footprints, joined w/ energy) ---
         fetch("/api/footprints")
@@ -147,7 +158,26 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
           }
         });
         setFeatures(properties);
-      });
+      };
+      // Prefer the standard load event, but don't depend on it: if tiles hang,
+      // the style is still structurally ready and data layers can attach.
+      if (map.isStyleLoaded()) {
+        addDataLayers();
+      } else {
+        map.once("load", addDataLayers);
+        // Safety net: attach after 2.5s even if 'load' hasn't fired (slow tiles).
+        const t = setTimeout(() => {
+          if (!cancelled && !map.isStyleLoaded()) return; // style still building
+          addDataLayers();
+        }, 2500);
+        map.on("error", (e) => {
+          // a style-level error also unblocks us; tile errors don't invalidate the style
+          if (e?.error && !cancelled) {
+            // no-op: handled by the general error handler above
+          }
+        });
+        void t;
+      }
     } catch {
       setError("Map could not initialize — table remains available.");
     }
