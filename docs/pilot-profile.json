@@ -1,0 +1,328 @@
+{
+  "campus_budget_boundary": {
+    "aggregate_status": "WITHHELD_UNRESOLVED",
+    "diagnostic_sum_all_rows_mtons": 2123193.6000000006,
+    "note": "Campus aggregate intentionally WITHHELD: coverage evidence not yet reviewed. These figures are diagnostics, not verified campus totals; the children-also-counted figure is a double-counting-risk diagnostic, not an upper bound.",
+    "orphan_child_count": 11,
+    "total_ghg_sum_all_rows_including_children_diagnostic_risk_of_double_counting": 2123193.6000000006,
+    "total_ghg_top_level_only_diagnostic_not_a_verified_total": 2123193.6000000006,
+    "unresolved_parent_child_ids": [
+      "2649545",
+      "2671366",
+      "2693044",
+      "2781114",
+      "2781115",
+      "15569048",
+      "20277545",
+      "22164413",
+      "54045494",
+      "54045495",
+      "56974792",
+      "10898347",
+      "15667692",
+      "20239726",
+      "20474279",
+      "21110140",
+      "21354642",
+      "21354956",
+      "22164271",
+      "2364110",
+      "25764370",
+      "2653163",
+      "26708346",
+      "27510064",
+      "2785102",
+      "31555728",
+      "33152689",
+      "33920199",
+      "3448548",
+      "3448572",
+      "3448575",
+      "3448781",
+      "4624800",
+      "51883092",
+      "52524192",
+      "53119793",
+      "53179692",
+      "54045098",
+      "56973493",
+      "59240792",
+      "6024436",
+      "6228015",
+      "6355115",
+      "6405435",
+      "6617957"
+    ]
+  },
+  "counts": {
+    "bbl_multi_valued_rows": 10,
+    "bbl_unparsed_rows": 29,
+    "count_reconciled_rows": 1096,
+    "distinct_bins": 984,
+    "distinct_canonical_bbls": 913,
+    "distinct_property_ids": 1096,
+    "duplicate_property_ids_count": 0,
+    "multi_bin_rows": 40,
+    "rows_equal_distinct_properties": true
+  },
+  "dataset": {
+    "bbox": "Midtown Core, Manhattan: lat [40.748, 40.765], lon [-73.988, -73.970]; contiguous rectangle spanning ~Bryant Park/Grand Central/Chrysler/ESB-adjacent core.",
+    "landing_page": "https://data.cityofnewyork.us/resource/5zyy-y8am",
+    "license": "NYC Open Data Terms of Use",
+    "name": "NYC Building Energy and Water Data Disclosure for Local Law 84 2023 to Present (Data for Calendar Year 2022-Present)",
+    "publisher": "NYC Mayor's Office of Climate & Environmental Justice (via NYC Open Data)",
+    "report_year": 2024,
+    "resource_endpoint": "https://data.cityofnewyork.us/resource/5zyy-y8am.json",
+    "socrata_id": "5zyy-y8am"
+  },
+  "hashes": {
+    "raw.jsonl.sha256": "bdf65a8dbd7fc318fcde3f5f073a3ba4a11c4735fd01203e95e4bf48863e184a"
+  },
+  "identifier_diagnostics": {
+    "bbl_multi_valued_examples": [
+      {
+        "bbl_raw": "1012640005;1012660001;1012657501;1012640030;1012650050;1012640045",
+        "property_id": "2364110"
+      },
+      {
+        "bbl_raw": "1008417502;1008410063",
+        "property_id": "4936637"
+      },
+      {
+        "bbl_raw": "1012840033;1012840026",
+        "property_id": "6024436"
+      },
+      {
+        "bbl_raw": "1012690020;1012690058;1012690009;1012690013",
+        "property_id": "6228015"
+      },
+      {
+        "bbl_raw": "1008390021;1008397503",
+        "property_id": "6466675"
+      }
+    ],
+    "bbl_unparsed_examples": [
+      {
+        "bbl_raw": "1-01290-7502",
+        "property_id": "1518772"
+      },
+      {
+        "bbl_raw": "1-01337-0014",
+        "property_id": "1582252"
+      },
+      {
+        "bbl_raw": "1-00892-0020",
+        "property_id": "2595904"
+      },
+      {
+        "bbl_raw": "1-01288-0051",
+        "property_id": "2809266"
+      },
+      {
+        "bbl_raw": "Not Available",
+        "property_id": "2921576"
+      }
+    ],
+    "multi_bin_examples": [
+      {
+        "bin_raw": "1083719;1083720;1083721",
+        "property_id": "1470683"
+      },
+      {
+        "bin_raw": "1077286;1077284;1077287;1083861;1076262;1083860;1083859;1034506;1082656;1075692;1083862;1087733;1090166;1090167",
+        "property_id": "2364110"
+      },
+      {
+        "bin_raw": "1083634;1083635;1083636",
+        "property_id": "2653163"
+      },
+      {
+        "bin_raw": "1036154;1083181",
+        "property_id": "2785102"
+      },
+      {
+        "bin_raw": "1037574;1084253",
+        "property_id": "2803972"
+      }
+    ]
+  },
+  "metric_completeness": {
+    "direct_ghg_emissions_intensity": {
+      "explicit_zero": 79,
+      "label": "Direct GHG Emissions Intensity (kgCO2e/ft\u00b2)",
+      "non_null": 843,
+      "null_or_blank_or_na": 253,
+      "pct_non_null": 76.92,
+      "total_rows": 1096,
+      "unit_note": "Source Socrata metadata for 5zyy-y8am names these GHG fields (Metric Tons | Metric Tons CO2e) / (kgCO2e/ft\u00b2); values are metric tons CO2e (tCO2e), commonly 'Mt CO2e spoken but NOT mega-tons'."
+    },
+    "direct_ghg_emissions_metric": {
+      "explicit_zero": 56,
+      "label": "Direct GHG Emissions (Metric Tons CO2e)",
+      "non_null": 843,
+      "null_or_blank_or_na": 253,
+      "pct_non_null": 76.92,
+      "total_rows": 1096,
+      "unit_note": "Source Socrata metadata for 5zyy-y8am names these GHG fields (Metric Tons | Metric Tons CO2e) / (kgCO2e/ft\u00b2); values are metric tons CO2e (tCO2e), commonly 'Mt CO2e spoken but NOT mega-tons'."
+    },
+    "electricity_use_grid_purchase": {
+      "explicit_zero": 0,
+      "label": "Electricity Use - Grid Purchase (kBtu)",
+      "non_null": 1021,
+      "null_or_blank_or_na": 75,
+      "pct_non_null": 93.16,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "natural_gas_use_kbtu": {
+      "explicit_zero": 59,
+      "label": "Natural Gas Use (kBtu)",
+      "non_null": 834,
+      "null_or_blank_or_na": 262,
+      "pct_non_null": 76.09,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "property_gfa_self_reported": {
+      "explicit_zero": 0,
+      "label": "Property GFA - Self-Reported (ft\u00b2)",
+      "non_null": 1096,
+      "null_or_blank_or_na": 0,
+      "pct_non_null": 100.0,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "site_eui_kbtu_ft": {
+      "explicit_zero": 0,
+      "label": "Site EUI (kBtu/ft\u00b2)",
+      "non_null": 1007,
+      "null_or_blank_or_na": 89,
+      "pct_non_null": 91.88,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "total_location_based_ghg": {
+      "explicit_zero": 0,
+      "label": "Total (Location-Based) GHG Emissions (Metric Tons CO2e)",
+      "non_null": 1007,
+      "null_or_blank_or_na": 89,
+      "pct_non_null": 91.88,
+      "total_rows": 1096,
+      "unit_note": "Source Socrata metadata for 5zyy-y8am names these GHG fields (Metric Tons | Metric Tons CO2e) / (kgCO2e/ft\u00b2); values are metric tons CO2e (tCO2e), commonly 'Mt CO2e spoken but NOT mega-tons'."
+    },
+    "water_use_all_water_sources": {
+      "explicit_zero": 1,
+      "label": "Water Use (All Water Sources) (kgal)",
+      "non_null": 645,
+      "null_or_blank_or_na": 451,
+      "pct_non_null": 58.85,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "weather_normalized_site_eui": {
+      "explicit_zero": 0,
+      "label": "Weather Normalized Site EUI (kBtu/ft\u00b2)",
+      "non_null": 969,
+      "null_or_blank_or_na": 127,
+      "pct_non_null": 88.41,
+      "total_rows": 1096,
+      "unit_note": null
+    }
+  },
+  "parent_child_flags": {
+    "child_property_count": 89,
+    "classification_note": "Via signalnyc.ingest.quality.campus_accounting: records whose parent_property_id equals their own property_id are classified as parents (not children); check adds to rows.",
+    "missing_parent_ids": [
+      "15667692",
+      "22164271",
+      "25764370",
+      "26708346",
+      "33152689",
+      "54045098",
+      "56973493",
+      "59240792"
+    ],
+    "missing_parent_ids_note": "Every referenced-but-absent parent property ID is listed (not silently truncated); these campuses are outside the bbox slice.",
+    "orphan_child_count": 11,
+    "orphan_child_examples": [
+      {
+        "parent_property_id": "26708346",
+        "property_id": "2649545"
+      },
+      {
+        "parent_property_id": "15667692",
+        "property_id": "2671366"
+      },
+      {
+        "parent_property_id": "56973493",
+        "property_id": "2693044"
+      },
+      {
+        "parent_property_id": "33152689",
+        "property_id": "2781114"
+      },
+      {
+        "parent_property_id": "33152689",
+        "property_id": "2781115"
+      },
+      {
+        "parent_property_id": "59240792",
+        "property_id": "15569048"
+      },
+      {
+        "parent_property_id": "25764370",
+        "property_id": "20277545"
+      },
+      {
+        "parent_property_id": "22164271",
+        "property_id": "22164413"
+      },
+      {
+        "parent_property_id": "54045098",
+        "property_id": "54045494"
+      },
+      {
+        "parent_property_id": "54045098",
+        "property_id": "54045495"
+      }
+    ],
+    "parent_property_count": 26,
+    "standalone_count": 981
+  },
+  "query": {
+    "count_query_url": "https://data.cityofnewyork.us/resource/5zyy-y8am.json?%24select=count%28%2A%29+as+n&%24where=report_year+%3D+%272024%27+AND+latitude+BETWEEN+%2740.748%27+AND+%2740.765%27+AND+longitude+BETWEEN+%27-73.988%27+AND+%27-73.970%27",
+    "page_size": 10000,
+    "selected_fields": [
+      "property_id",
+      "parent_property_id",
+      "report_year",
+      "year_ending",
+      "nyc_borough_block_and_lot",
+      "nyc_building_identification",
+      "address_1",
+      "postal_code",
+      "latitude",
+      "longitude",
+      "property_gfa_self_reported",
+      "site_eui_kbtu_ft",
+      "weather_normalized_site_eui",
+      "direct_ghg_emissions_metric",
+      "direct_ghg_emissions_intensity",
+      "total_location_based_ghg",
+      "electricity_use_grid_purchase",
+      "natural_gas_use_kbtu",
+      "water_use_all_water_sources"
+    ],
+    "where": "report_year = '2024' AND latitude BETWEEN '40.748' AND '40.765' AND longitude BETWEEN '-73.988' AND '-73.970'"
+  },
+  "retrieval": {
+    "captured_utc": "2026-09-24T15:45:20Z",
+    "mode": "offline",
+    "raw_snapshot_immutable": true
+  },
+  "units": {
+    "ghg_intensity": "kgCO2e/ft\u00b2 per source metadata",
+    "ghg_mass": "metric tons CO2e (tCO2e) per source metadata",
+    "note": "Source Socrata metadata for 5zyy-y8am names these GHG fields (Metric Tons | Metric Tons CO2e) / (kgCO2e/ft\u00b2); values are metric tons CO2e (tCO2e), commonly 'Mt CO2e spoken but NOT mega-tons'."
+  }
+}

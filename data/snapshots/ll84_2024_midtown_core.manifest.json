@@ -1,0 +1,42 @@
+{
+  "captured_utc": "2026-09-24T15:45:20Z",
+  "count_query_url": "https://data.cityofnewyork.us/resource/5zyy-y8am.json?%24select=count%28%2A%29+as+n&%24where=report_year+%3D+%272024%27+AND+latitude+BETWEEN+%2740.748%27+AND+%2740.765%27+AND+longitude+BETWEEN+%27-73.988%27+AND+%27-73.970%27",
+  "fetch_log": {
+    "pages": 1,
+    "requests": [
+      {
+        "rows": 1096,
+        "status": 200,
+        "url_sha": "/resource/5zyy-y8am.json[?]"
+      }
+    ],
+    "rows": 1096
+  },
+  "raw_file": "/mnt/e/OC_Projects/projects/signalnyc/data/snapshots/ll84_2024_midtown_core.raw.jsonl",
+  "rows": 1096,
+  "selected_fields": [
+    "property_id",
+    "parent_property_id",
+    "report_year",
+    "year_ending",
+    "nyc_borough_block_and_lot",
+    "nyc_building_identification",
+    "address_1",
+    "postal_code",
+    "latitude",
+    "longitude",
+    "property_gfa_self_reported",
+    "site_eui_kbtu_ft",
+    "weather_normalized_site_eui",
+    "direct_ghg_emissions_metric",
+    "direct_ghg_emissions_intensity",
+    "total_location_based_ghg",
+    "electricity_use_grid_purchase",
+    "natural_gas_use_kbtu",
+    "water_use_all_water_sources"
+  ],
+  "sha256": "bdf65a8dbd7fc318fcde3f5f073a3ba4a11c4735fd01203e95e4bf48863e184a",
+  "slice": "ll84_2024_midtown_core",
+  "socrata_id": "5zyy-y8am",
+  "where": "report_year = '2024' AND latitude BETWEEN '40.748' AND '40.765' AND longitude BETWEEN '-73.988' AND '-73.970'"
+}

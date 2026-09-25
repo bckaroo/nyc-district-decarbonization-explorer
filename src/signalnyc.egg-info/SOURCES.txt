@@ -1,0 +1,11 @@
+pyproject.toml
+src/signalnyc/__init__.py
+src/signalnyc.egg-info/PKG-INFO
+src/signalnyc.egg-info/SOURCES.txt
+src/signalnyc.egg-info/dependency_links.txt
+src/signalnyc.egg-info/requires.txt
+src/signalnyc.egg-info/top_level.txt
+src/signalnyc/data/__init__.py
+src/signalnyc/data/identifiers.py
+src/signalnyc/data/observations.py
+src/signalnyc/ingest/__init__.py

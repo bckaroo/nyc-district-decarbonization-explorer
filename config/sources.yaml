@@ -1,0 +1,53 @@
+# SignalNYC data sources (metadata verified against Socrata live API 2026-09-24)
+# Values below were read from https://data.cityofnewyork.us/api/views/<id>.json
+sources:
+  - id: ll84_2022_present
+    socrata_id: 5zyy-y8am
+    name: "NYC Building Energy and Water Data Disclosure for Local Law 84 2023 to Present (Data for Calendar Year 2022-Present)"
+    publisher: NYC Mayor's Office of Climate & Environmental Justice (via NYC Open Data)
+    license: "NYC Open Data Terms of Use (https://opendata.cityofnewyork.us/); dataset distribution per Socrata API, no API key required"
+    landing_page: "https://data.cityofnewyork.us/resource/5zyy-y8am"
+    resource_endpoint: "https://data.cityofnewyork.us/resource/5zyy-y8am.json"
+    update_frequency: "Annual (rows verified for report_years 2022, 2023, 2024)"
+    grain: "One row per property per calendar year (annual totals; no monthly readings). Campus parent/child rows both present."
+    key_fields:
+      - report_year
+      - property_id
+      - parent_property_id
+      - nyc_borough_block_and_lot
+      - nyc_building_identification
+      - site_eui_kbtu_ft
+      - weather_normalized_site_eui
+      - property_gfa_self_reported
+      - direct_ghg_emissions_metric
+      - direct_ghg_emissions_intensity
+      - total_location_based_ghg
+    notes: >
+      Field labels verified from dataset metadata (not guessed). Annual observed
+      data only. 'report_year' = calendar year the data covers; 'year_ending'
+      should be inspected per row. weather_normalized_* fields are explicitly
+      weather-normalized and must be kept distinct from observed values.
+
+  - id: building_footprints
+    socrata_id: 5zhs-2jue
+    name: "BUILDING (Building Footprints)"
+    publisher: NYC DOITT/OTI via NYC Open Data
+    license: "NYC Open Data Terms of Use; no API key required"
+    landing_page: "https://data.cityofnewyork.us/Property/BUILDING-FOOTPRINTS/5zhs-2jue"
+    resource_endpoint: "https://data.cityofnewyork.us/resource/5zhs-2jue.json"
+    update_frequency: "Continuous (city-maintained)"
+    grain: "One row per physical building footprint (may be multiple footprints per BBL)"
+    key_fields: [the_geom, bin, mappluto_bbl, base_bbl, height_roof, construction_year]
+    notes: "Join to LL84 by BBL (mappluto_bbl); BIN distinct from BBL. ~500 row cap per unpaginated query."
+
+  - id: pluto
+    socrata_id: 64uk-42ks
+    name: "Primary Land Use Tax Lot Output (PLUTO)"
+    publisher: NYC DCP via NYC Open Data
+    license: "NYC Open Data Terms of Use"
+    landing_page: "https://data.cityofnewyork.us/City-Government/Primary-Land-Use-Tax-Lot-Output-PLUTO-/64uk-42ks"
+    resource_endpoint: "https://data.cityofnewyork.us/resource/64uk-42ks.json"
+    update_frequency: "Quarterly/annual (per DCP Vintage)"
+    grain: "One row per tax lot (NOT per physical building)"
+    key_fields: [bbl, bbl_1, numfloors, lotarea, bldgclass, landuse, yearbuilt]
+    notes: "No usable geometry columns (verified); spatial work must use footprints/feature server."
