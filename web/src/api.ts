@@ -62,19 +62,28 @@ export const MISSING_FIELD_OPTIONS = [
   { value: "electricity_use_grid_purchase", label: "Electricity missing" },
 ] as const;
 
-async function getJson<T>(url: string): Promise<T> {
-  const res = await fetch(url, { headers: { Accept: "application/json" } });
-  if (!res.ok) {
-    let detail = `${res.status}`;
-    try {
-      const body = await res.json();
-      if (body?.detail) detail = String(body.detail);
-    } catch {
-      /* keep status text */
+async function getJson<T>(url: string, attempt = 1): Promise<T> {
+  try {
+    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!res.ok) {
+      let detail = `${res.status}`;
+      try {
+        const body = await res.json();
+        if (body?.detail) detail = String(body.detail);
+      } catch {
+        /* keep status text */
+      }
+      throw new Error(detail);
     }
-    throw new Error(detail);
+    return (await res.json()) as T;
+  } catch (e) {
+    // One retry for transient network failures (e.g. tailnet reconnects).
+    if (attempt < 2) {
+      await new Promise((r) => setTimeout(r, 600));
+      return getJson<T>(url, attempt + 1);
+    }
+    throw e;
   }
-  return (await res.json()) as T;
 }
 
 export const api = {

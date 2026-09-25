@@ -115,23 +115,24 @@ export default function App() {
   return (
     <div className="app">
       <header className="header">
-        <h1>SignalNYC — Midtown Core Pilot Explorer</h1>
+        <div className="header-top">
+          <h1>Signal<span className="accent">NYC</span></h1>
+          <span className="subtitle">LL84 Midtown Core · CY2024 pilot explorer</span>
+        </div>
         <p className="disclaimer">
-          <strong>Preliminary explorer — annual observed data.</strong> One point = one
-          reporting property, which may be a campus covering several buildings. EUI in
-          kBtu/ft²·yr, GHG in tCO2e, fuels in kBtu. Property-level reporting; not a
-          building-level, compliance, savings, or LL97 assessment.
+          Preliminary explorer — annual observed data. One point = one reporting property
+          (may be a campus). Property-level reporting; not a building-level, compliance,
+          savings, or LL97 assessment.
         </p>
         {snapshot && counters && (
-          <p className="meta">
-            {fmtInt(snapshot.rows)} reporting properties · dataset {snapshot.socrata_dataset} ·
-            snapshot {snapshot.snapshot_utc} · sha256 {snapshot.sha256?.slice(0, 12) ?? "—"}… ·{" "}
-            {counters.multi_bin_properties} campus (multi-BIN) properties ·{" "}
-            missing: EUI {fmtInt(snapshot.rows - counters.has_eui)}, GHG{" "}
-            {fmtInt(snapshot.rows - counters.has_ghg)}, gas{" "}
-            {fmtInt(snapshot.rows - counters.has_gas)}, electricity{" "}
-            {fmtInt(snapshot.rows - counters.has_electricity)}
-          </p>
+          <div className="chips">
+            <span className="chip accent"><b>{fmtInt(snapshot.rows)}</b> properties</span>
+            <span className="chip"><b>{fmtInt(counters.with_coordinates)}</b> geocoded</span>
+            <span className="chip"><b>{counters.multi_bin_properties}</b> campuses</span>
+            <span className="chip">EUI <b>{fmtInt(counters.has_eui)}</b> / GHG <b>{fmtInt(counters.has_ghg)}</b> / gas <b>{fmtInt(counters.has_gas)}</b></span>
+            <span className="chip">snapshot {snapshot.snapshot_utc?.slice(0, 10)}</span>
+            <span className="chip" title={snapshot.sha256 ?? ""}>sha {snapshot.sha256?.slice(0, 8) ?? "—"}</span>
+          </div>
         )}
       </header>
 
