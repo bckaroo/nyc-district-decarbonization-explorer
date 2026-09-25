@@ -65,6 +65,9 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
   }>({ properties, selectedId, theme: OBSERVED_THEMES[0] });
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"points" | "footprints">("points");
+  const [parcelState, setParcelState] = useState<
+    { loaded: number; truncated: boolean } | null
+  >(null);
   const [themeId, setThemeId] = useState<string>(DEFAULT_THEME_ID);
   const theme = getTheme(themeId) ?? OBSERVED_THEMES[0];
   propsRef.current = { properties, selectedId, theme };
@@ -129,7 +132,10 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
             setMode("footprints");
             map.addSource("footprints", {
               type: "geojson",
-              data: { type: "FeatureCollection", features: feats },
+              data: {
+                type: "FeatureCollection",
+                features: feats as unknown as Array<import("geojson").Feature>,
+              },
             });
             map.addLayer({
               id: "fp-fill",
@@ -192,8 +198,141 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
             onSelect(f.properties.id);
           }
         });
+        // --- citywide MapPLUTO parcels (DEV-158): refetch over visible bbox ---
+        map.addSource("parcels", {
+          type: "geojson",
+          data: { type: "FeatureCollection", features: [] },
+        });
+        map.addLayer({
+          id: "parcel-fill",
+          type: "fill",
+          source: "parcels",
+          paint: {
+            "fill-color": "#5f7d95",
+            "fill-opacity": [
+              "case",
+              ["get", "has_ll84"],
+              0.45,
+              0.18,
+            ],
+          },
+        });
+        map.addLayer({
+          id: "parcel-line",
+          type: "line",
+          source: "parcels",
+          paint: {
+            "line-color": "#9fb8c8",
+            "line-width": 0.5,
+            "line-opacity": 0.7,
+          },
+        });
+        map.on("click", "parcel-fill", (e) => {
+          const f = e.features?.[0];
+          const p = f?.properties as Record<string, unknown> | undefined;
+          if (typeof p?.bbl === "string") {
+            const match = propsRef.current.properties.find((q) => q.bbl === p.bbl);
+            if (match) onSelect(match.property_id);
+          }
+        });
         setFeatures(propsRef.current.properties);
       };
+
+      // Prefetch-on-move with response stamping so a slow older response can
+      // never overwrite a newer one (async stale-closure fix).
+      let parcelReqSeq = 0;
+      const loadParcels = () => {
+        const map = mapRef.current;
+        if (!map || !map.getLayer("parcel-fill")) return;
+        const b = map.getBounds().toArray() as number[][]; // [[sw],[ne]]
+        const seq = ++parcelReqSeq;
+        const qs = new URLSearchParams({
+          min_x: String(b[0][0]),
+          min_y: String(b[0][1]),
+          max_x: String(b[1][0]),
+          max_y: String(b[1][1]),
+          limit: "8000",
+        });
+        fetch(`/api/parcels?${qs.toString()}`)
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+          .then(
+            (d: {
+              bbox?: number[];
+              features?: Array<{
+                geometry?: { type?: string };
+                properties?: Record<string, unknown>;
+              }>;
+            }) => {
+              if (cancelled) return;
+              const cur = mapRef.current;
+              if (!cur || !cur.getLayer("parcel-fill")) return;
+              const now = cur.getBounds().toArray() as number[][];
+              const curBox = [now[0][0], now[0][1], now[1][0], now[1][1]];
+              const stale =
+                d.bbox &&
+                d.bbox.some(
+                  (v, i) =>
+                    Math.abs(v - curBox[i]) >
+                    Math.max(Math.abs(curBox[i]) * 1e-6, 1e-9)
+                );
+              if (stale || seq !== parcelReqSeq) return;
+              const feats = (d.features ?? []).filter(
+                (f) =>
+                  (f?.geometry?.type === "Polygon" ||
+                    f?.geometry?.type === "MultiPolygon") &&
+                  f?.properties?.bbl
+              );
+              const src = cur.getSource("parcels") as
+                | maplibregl.GeoJSONSource
+                | undefined;
+              if (!src) return;
+              src.setData({
+                type: "FeatureCollection",
+                features: feats.map((f) => ({
+                  type: "Feature" as const,
+                  geometry: f.geometry as NonNullable<
+                    import("geojson").Feature["geometry"]
+                  >,
+                  properties: {
+                    bbl: f.properties?.bbl,
+                    has_ll84: Array.isArray(f.properties?.ll84_availability)
+                      ? (f.properties?.ll84_availability as unknown[]).length > 0
+                      : false,
+                    year_built: f.properties?.year_built ?? null,
+                    bldg_area_sqft: f.properties?.bldg_area_sqft ?? null,
+                  },
+                })),
+              });
+              setParcelState({
+                loaded: feats.length,
+                truncated: Boolean((d as { truncated?: boolean }).truncated),
+              });
+            }
+          )
+          .catch((err: unknown) => {
+            if (!cancelled)
+              console.error("[map] citywide parcels fetch failed:", err);
+          });
+      };
+      let parcelTimer: ReturnType<typeof setTimeout> | null = null;
+      const scheduleParcels = () => {
+        if (cancelled) return;
+        if (parcelTimer) clearTimeout(parcelTimer);
+        parcelTimer = setTimeout(loadParcels, 350);
+      };
+      // First load once the parcels source exists, then on map move end.
+      const parcelsReady = () =>
+        !!mapRef.current && !!mapRef.current.getLayer("parcel-fill");
+      const startParcelWiring = () => {
+        if (cancelled) return;
+        if (!parcelsReady()) {
+          setTimeout(startParcelWiring, 500);
+          return;
+        }
+        loadParcels();
+        map.on("moveend", scheduleParcels);
+      };
+      startParcelWiring();
       // Prefer the standard load event, but don't depend on it: if tiles hang,
       // the style is still structurally ready and data layers can attach.
       if (map.isStyleLoaded()) {
@@ -288,6 +427,12 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
   return (
     <div className="map-wrap">
       {error && <div className="map-fallback">{error}</div>}
+      {parcelState && !error && (
+        <div className="map-parcel-status" data-testid="parcel-status">
+          Citywide parcels: {parcelState.loaded.toLocaleString("en-US")}
+          {parcelState.truncated ? " (view truncated — zoom in)" : ""}
+        </div>
+      )}
       {mode === "footprints" && !error && (
         <div className="map-symbology-panel" data-testid="map-symbology-panel">
           <label className="symbology-select-label" htmlFor="symbology-select">

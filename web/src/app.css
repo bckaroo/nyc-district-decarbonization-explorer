@@ -188,6 +188,17 @@ td .dim { color: var(--faint); }
   padding: 6px 12px;
   font-size: 0.75rem;
 }
+.map-parcel-status {
+  position: absolute;
+  bottom: 10px; left: 10px;
+  z-index: 10;
+  background: rgba(11,14,20,.72);
+  color: #9fb8c8;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 0.7rem;
+}
 .maplibregl-ctrl-attrib { font-size: 10px !important; background: rgba(11,14,20,.7) !important; }
 .maplibregl-ctrl-attrib a { color: var(--muted) !important; }
 
