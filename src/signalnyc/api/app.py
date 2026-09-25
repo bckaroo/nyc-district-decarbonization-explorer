@@ -236,13 +236,19 @@ def create_app(
             raise HTTPException(status_code=404, detail=f"no LL84 record joined for BBL {bbl}")
         return rec
 
-    # ---- building footprints with joined energy attributes --------------------
+    # DEV-160: footprints served WITH modeled annual demand fields joined by pid
+    # (space_heating/dhw/cooling + _ft2_yr + evidence_tier). Falls back to the
+    # bare observed snapshot when the merged file hasn't been generated yet.
     _footprints_path = Path(
         os.environ.get(
             "SIGNALNYC_FOOTPRINTS",
-            str(Path(DEFAULT_RAW).parent / "footprints_joined.geojson"),
+            str(Path(DEFAULT_RAW).parent / "footprints_joined_demand.geojson"),
         )
     )
+    if not _footprints_path.exists():
+        _footprints_path = Path(
+            Path(DEFAULT_RAW).parent / "footprints_joined.geojson"
+        )
 
     @app.get("/api/footprints", include_in_schema=True)
     def api_footprints() -> FileResponse:

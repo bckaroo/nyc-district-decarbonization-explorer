@@ -248,6 +248,94 @@ def main():
         "conservation_as_expected": manifest["aggregate_conservation_check"]["as_expected"],
     }, indent=2))
 
+# ------------------------------------------------------------------------------
+# DEV-160: post-merge — write footprints WITH demand fields for /api/footprints.
+# The served snapshot (footprints_joined_demand.geojson) = footprints_joined
+# features plus the modeled demand fields from annual_demand.geojson, keyed by
+# pid. Missing pid match → fields absent (not zero). Manifest records the merge.
+MERGED_OUT = REPO / "data" / "snapshots" / "footprints_joined_demand.geojson"
+DONOR_FIELDS = (
+    "space_heating_kbtu", "dhw_kbtu", "cooling_kbtu",
+    "space_heating_kbtu_ft2_yr", "dhw_kbtu_ft2_yr", "cooling_kbtu_ft2_yr",
+    "evidence_tier", "archetype", "method_heating", "method_cooling",
+    "model_version",
+)
+
+
+def merge_demand_into_footprints() -> dict:
+    """Join demand donor fields onto footprints by pid; write merged snapshot."""
+    fp = json.loads(IN_GEOJSON.read_text())
+    dem = json.loads(OUT_GEO.read_text())
+    by_pid = {
+        f["properties"]["pid"]: f["properties"]
+        for f in dem.get("features", [])
+        if isinstance(f.get("properties", {}).get("pid"), str)
+    }
+    matched = 0
+    merged_feats = []
+    for f in fp.get("features", []):
+        props = f.get("properties", {})
+        donor = by_pid.get(props.get("pid"))
+        if donor is None:
+            props["net_thermal_kbtu_ft2_yr"] = None
+            for key in DONOR_FIELDS:
+                props[key] = None
+        else:
+            matched += 1
+            for key in DONOR_FIELDS:
+                props[key] = donor.get(key)
+            # Net annual thermal demand = delivered heating + DHW − cooling
+            # (kBtu/ft²·yr; >0 net heating demand, <0 net cooling demand).
+            h, dh, c = (
+                donor.get("space_heating_kbtu_ft2_yr"),
+                donor.get("dhw_kbtu_ft2_yr"),
+                donor.get("cooling_kbtu_ft2_yr"),
+            )
+            props["net_thermal_kbtu_ft2_yr"] = (
+                round(h + dh - c, 2) if (h is not None and dh is not None and c is not None) else None
+            )
+        merged_feats.append({"type": "Feature", "geometry": f["geometry"], "properties": props})
+    out = {"type": "FeatureCollection", "features": merged_feats, "model_version": MODEL_VERSION}
+    MERGED_OUT.write_text(json.dumps(out))
+    merged_manifest = {
+        "base": IN_GEOJSON.name,
+        "demand_source": str(OUT_GEO.relative_to(REPO)),
+        "demand_source_sha256": sha256_file(OUT_GEO),
+        "donor_fields": list(DONOR_FIELDS),
+        "features": len(merged_feats),
+        "matched_demand_pid": matched,
+        "model_version": MODEL_VERSION,
+        "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "sha256": sha256_file(MERGED_OUT),
+        "bytes": MERGED_OUT.stat().st_size,
+        "note": "Demand fields are MODELED/ESTIMATED (archetype shares constrained by LL84, eta=0.8 gas, COP cooling) — NOT measured. evidence_tier donor field labels each row's input quality.",
+    }
+    (REPO / "data" / "snapshots" / "footprints_joined_demand.manifest.json").write_text(
+        json.dumps(merged_manifest, indent=2)
+    )
+    return merged_manifest
+
 
 if __name__ == "__main__":
     main()
+    m = merge_demand_into_footprints()
+    net_vals = sorted(
+        f["properties"]["net_thermal_kbtu_ft2_yr"]
+        for f in json.loads(MERGED_OUT.read_text())["features"]
+        if f["properties"].get("net_thermal_kbtu_ft2_yr") is not None
+    )
+
+    def _pct(q: float) -> float:
+        i = q * (len(net_vals) - 1)
+        lo = int(i)
+        return net_vals[lo] + (net_vals[min(lo + 1, len(net_vals) - 1)] - net_vals[lo]) * (i - lo)
+
+    print(json.dumps({
+        "net_thermal_percentiles_kbtu_ft2_yr": {
+            f"p{int(q*100)}": round(_pct(q), 1) for q in (0.05, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99)
+        },
+    }, indent=2))
+    print(json.dumps({"merged_snapshot": {
+        "features": m["features"], "matched_demand_pid": m["matched_demand_pid"],
+        "sha256": m["sha256"], "bytes": m["bytes"],
+    }}, indent=2))

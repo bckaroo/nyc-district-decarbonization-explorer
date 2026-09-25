@@ -1,0 +1,25 @@
+{
+  "base": "footprints_joined.geojson",
+  "demand_source": "data/citywide/annual_demand_pilot/annual_demand.geojson",
+  "demand_source_sha256": "4a515af11bce49cb29e0cdff203ab966a0184c76c599b7602a429c4ea66525b8",
+  "donor_fields": [
+    "space_heating_kbtu",
+    "dhw_kbtu",
+    "cooling_kbtu",
+    "space_heating_kbtu_ft2_yr",
+    "dhw_kbtu_ft2_yr",
+    "cooling_kbtu_ft2_yr",
+    "evidence_tier",
+    "archetype",
+    "method_heating",
+    "method_cooling",
+    "model_version"
+  ],
+  "features": 932,
+  "matched_demand_pid": 932,
+  "model_version": "v1.0",
+  "generated_utc": "2026-09-25T11:53:27+00:00",
+  "sha256": "f56ae26e4f84d2c48b7def5694ed0232f110eec850fd4a2d1a0f04917f72c547",
+  "bytes": 1311131,
+  "note": "Demand fields are MODELED/ESTIMATED (archetype shares constrained by LL84, eta=0.8 gas, COP cooling) \u2014 NOT measured. evidence_tier donor field labels each row's input quality."
+}

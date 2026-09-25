@@ -1,6 +1,6 @@
 {
   "model_version": "v1.0",
-  "generated_utc": "2026-09-25T11:29:54+00:00",
+  "generated_utc": "2026-09-25T11:53:27+00:00",
   "inputs": {
     "footprints_geojson": "footprints_joined.geojson",
     "footprints_sha256": "5d809a090d62dd4a1a388fc38e1644ad81718d6fc00b41bc198ebd01b06b2e38",
@@ -11,38 +11,38 @@
   "output": {
     "file": "annual_demand.geojson",
     "features": 932,
-    "sha256": "d9def25f529aae72f406aa8159e353c53bc7761331e5b870b8fdfcfa9430650b",
-    "bytes": 1287199
+    "sha256": "4a515af11bce49cb29e0cdff203ab966a0184c76c599b7602a429c4ea66525b8",
+    "bytes": 1278984
   },
   "counts_by_tier": {
-    "T1_observed_full": 906,
-    "T4_footprint_numeric_only": 26
+    "T1_observed_full": 919,
+    "T4_footprint_numeric_only": 13
   },
   "aggregate_conservation_check": {
     "note": "T1 gas rows: \u03a3 allocated (space_heating+DHW) = \u03a3 observed_gas \u00d7 (share_h+share_d=1.0) \u00d7 \u03b7=0.80, i.e. exactly 0.80\u00d7 observed, by algebraic construction. The 20% difference is real fuel-to-delivered-heat efficiency loss (stack/excess-air), intentionally NOT stored as an end-use bucket. Recorded as a reproducibility receipt and sanity check that shares+\u03b7 were applied as parameterized; not a statistical finding.",
-    "observed_gas_kbtu_t1": 3134306813.8,
-    "allocated_heat_plus_dhw_kbtu_t1": 2507445451.2,
+    "observed_gas_kbtu_t1": 3158994903.7,
+    "allocated_heat_plus_dhw_kbtu_t1": 2527195923.1,
     "implied_eta": 0.8,
     "as_expected": true
   },
   "null_counts": {
-    "heating": 14,
+    "heating": 235,
     "cooling": 16
   },
   "intensity_distributions_kbtu_ft2_yr": {
     "space_heating": {
-      "n": 918,
-      "median": 12.59,
-      "p10": 0.25,
-      "p90": 45.3,
-      "max": 5599.78
+      "n": 697,
+      "median": 5.25,
+      "p10": 0.12,
+      "p90": 34.72,
+      "max": 1342.4
     },
     "dhw": {
-      "n": 918,
-      "median": 4.69,
-      "p10": 0.09,
-      "p90": 18.65,
-      "max": 2399.9
+      "n": 697,
+      "median": 1.81,
+      "p10": 0.04,
+      "p90": 13.9,
+      "max": 447.47
     },
     "cooling": {
       "n": 916,
@@ -53,12 +53,9 @@
     }
   },
   "aggregate_kbtu_by_tier": {
-    "T1_observed_full:cooling": 27664490169.0,
-    "T1_observed_full:dhw": 1731645045.7,
-    "T1_observed_full:space_heating": 4332353644.7,
-    "T4_footprint_numeric_only:cooling": 418851624.7,
-    "T4_footprint_numeric_only:dhw": 5074608.2,
-    "T4_footprint_numeric_only:space_heating": 14675863.7
+    "T1_observed_full:cooling": 28083341793.7,
+    "T1_observed_full:dhw": 669753683.0,
+    "T1_observed_full:space_heating": 1857442240.1
   },
   "honest_limits": [
     "No invented confidence intervals: outputs carry evidence tier + method tag, not a CI.",

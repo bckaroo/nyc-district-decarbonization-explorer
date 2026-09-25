@@ -36,6 +36,18 @@ export interface ThemeDef {
   legendStops: string[];
   /** Gray color for null/missing values. */
   nullGray: string;
+  /** Value mapped to ramp[0] (bottom of the ramp). Default 0; diverging themes set it below break[0]. */
+  rampStart?: number;
+}
+
+/**
+ * A modeled theme carries ESTIMATED end-use values, not observed fuel or
+ * reported LL84 columns. Every grain must say so explicitly.
+ */
+export interface ModeledThemeDef extends Omit<ThemeDef, "grain"> {
+  decidingField: string;
+  grain: string;
+  modelNote: string;
 }
 
 // Shared observed-energy ramp (skill-verified EUI ramp, reused elsewhere).
@@ -137,29 +149,87 @@ const GFA_THEME: ThemeDef = {
   nullGray: NUM_GRAY,
 };
 
-/** Explicitly NOT yet available — requires a modeled end-use split. */
+/**
+ * MODELED annual end-use estimates (DEV-160). Source: v1.0 additive end-use
+ * split model (scripts/build_annual_demand.py + annual_demand_params.json):
+ * LL84 reported fuels → archetype end-use shares constrained by LL84 →
+ * delivered end-use demand (heating efficiency η=0.80 gas, cooling COP=3.0).
+ * NOT measured. Each feature carries an evidence_tier property; nulls = the
+ * model could not estimate (never zero). Served from
+ * data/snapshots/footprints_joined_demand.geojson via /api/footprints.
+ */
+const MODEL_GRAIN =
+  "Modeled/estimated per footprint: annual end-use demand derived from LL84 reported fuels via archetype shares constrained by LL84 (heating efficiency eta=0.8 gas, cooling COP=3.0) — NOT measured or reported; nulls = model could not estimate (never zero); evidence_tier property on each footprint labels its input quality.";
+
+/** Net thermal distribution (computed by scripts/build_annual_demand.py):
+ * p5 −163, p25 −104, median −72, p75 −37, p90 −11, p95 −1, p99 +23 kBtu/ft²·yr —
+ * most of this pilot cluster is cooling-dominated, so the diverging ramp's
+ * neutral band sits in ±10 and the outer breaks follow the pilot quantiles. */
+const NET_THERMAL_THEME: ModeledThemeDef = {
+  id: "net_thermal_kbtu_ft2_yr",
+  label: "Net thermal demand (modeled)",
+  field: "NET_THERMAL_SENTINEL",
+  decidingField: "net_thermal_kbtu_ft2_yr",
+  units: "kBtu/ft²·yr",
+  grain: MODEL_GRAIN,
+  modelNote:
+    "net = modeled space heating + DHW − modeled cooling per ft²·yr; positive = net heating demand (red), negative = net cooling demand (blue). Diverging breaks chosen from the pilot's net-thermal quantiles, not a fixed ULI palette.",
+  disaggregated: false,
+  weatherNormalized: false,
+  // Deep blue (net cooling, negative) → white/neutral exactly at 0 → deep red
+  // (net heating, positive), ULI-style annual net thermal demand ramp.
+  // Stops are symmetric so 0 evaluates to the exact neutral stop.
+  ramp: ["#1d4ed8", "#3b82f6", "#93c5fd", "#f1f5f9", "#fca5a5", "#ef4444", "#b91c1c"],
+  breaks: [-100, -20, 20, 100, 300],
+  rampStart: -300,
+  legendStops: ["−300", "−100", "−20", "0", "+20", "+100", "+300+"],
+  nullGray: NUM_GRAY,
+};
+
+function modeledSingleRampTheme(
+  id: string,
+  label: string,
+  field: "space_heating_kbtu_ft2_yr" | "dhw_kbtu_ft2_yr" | "cooling_kbtu_ft2_yr",
+  p50: number,
+  p90: number,
+  p99: number
+): ModeledThemeDef {
+  const breaks = [p50, p90, p99, p99 * 3].map((b) => Math.round(b * 10) / 10);
+  return {
+    id,
+    label,
+    field,
+    decidingField: field,
+    units: "kBtu/ft²·yr",
+    grain: MODEL_GRAIN,
+    modelNote: `modeled/estimated per archetype split constrained by LL84, eta=0.8 gas, COP cooling — NOT measured; pilot quantiles: p50 ${p50}, p90 ${p90}, p99 ${Math.round(p99)}; evidence_tier property provided per footprint`,
+    disaggregated: false,
+    weatherNormalized: false,
+    ramp: ["#dbeafe", "#93c5fd", "#60a5fa", "#2563eb", "#1e40af"],
+    breaks,
+    legendStops: ["0", `${breaks[0]}`, `${breaks[1]}`, `${breaks[2]}`, `${breaks[3]}+`],
+    nullGray: NUM_GRAY,
+  };
+}
+
+export const MODELED_THEMES: ModeledThemeDef[] = [
+  NET_THERMAL_THEME,
+  modeledSingleRampTheme("heating_demand", "Space-heating demand (modeled)", "space_heating_kbtu_ft2_yr", 12.6, 45.2, 299.9),
+  modeledSingleRampTheme("dhw_demand", "Domestic hot water demand (modeled)", "dhw_kbtu_ft2_yr", 4.7, 18.6, 124.8),
+  modeledSingleRampTheme("cooling_demand", "Space-cooling demand (modeled)", "cooling_kbtu_ft2_yr", 88.5, 158.2, 286.7),
+];
+
+/**
+ * Themes NOT yet available — candidate map modes still lacking reliable data
+ * or a reviewed model. Currently empty: DEV-160 enabled the modeled set above.
+ */
 export interface UnavailableMode {
   id: string;
   label: string;
   reason: string;
 }
-export const UNAVAILABLE_THEMES: UnavailableMode[] = [
-  {
-    id: "heating_demand",
-    label: "Space-heating demand",
-    reason: "Requires modeled end-use data: LL84 gas is all-end-use and electricity is all-grid, so thermal heating load cannot be read from reported fuel totals.",
-  },
-  {
-    id: "dhw_demand",
-    label: "Domestic hot water demand",
-    reason: "Requires modeled end-use data: LL84 reported gas includes DHW plus cooking and other uses, no column isolates DHW.",
-  },
-  {
-    id: "cooling_demand",
-    label: "Space-cooling demand",
-    reason: "Requires modeled end-use data: purchased electricity covers all end uses; no LL84 column isolates cooling.",
-  },
-];
+export const UNAVAILABLE_THEMES: UnavailableMode[] = [];
+
 
 /** Observed themes, in selector order. */
 export const OBSERVED_THEMES: ThemeDef[] = [
@@ -172,8 +242,15 @@ export const OBSERVED_THEMES: ThemeDef[] = [
 ];
 
 export function getTheme(id: string): ThemeDef | undefined {
-  return OBSERVED_THEMES.find((t) => t.id === id);
+  return OBSERVED_THEMES.find((t) => t.id === id) ?? MODELED_THEMES.find((t) => t.id === id);
 }
+
+/** Resolution helper: searched across all modeable themes incl. modeled. */
+export function getModeledTheme(id: string): ModeledThemeDef | undefined {
+  return MODELED_THEMES.find((t) => t.id === id);
+}
+
+export const ALL_SELECTABLE_THEMES = [...OBSERVED_THEMES, ...MODELED_THEMES];
 
 /**
  * MapLibre paint expression for a theme: `case`-guarded interpolate ramp.
@@ -181,11 +258,17 @@ export function getTheme(id: string): ThemeDef | undefined {
  * (if any slips into the geojson) also routes to gray via to-number guard.
  */
 export function colorExpr(theme: ThemeDef): unknown {
-  const ramp: unknown[] = [];
+  // Ascending stops: rampStart (default 0) -> breaks[0..n-1] -> topStop
+  // (default: breaks[last] * 2 − rampStart, so the last color holds the tail).
+  const start = theme.rampStart ?? 0;
+  const top = start >= 0 ? theme.breaks[theme.breaks.length - 1] * 2 : theme.breaks[theme.breaks.length - 1] + 200;
+  const stops: Array<[number, string]> = [];
   for (let i = 0; i < theme.ramp.length; i++) {
-    const v = i === 0 ? 0 : theme.breaks[i - 1];
-    ramp.push(v, theme.ramp[i]);
+    const v = i === 0 ? start : i <= theme.breaks.length ? theme.breaks[i - 1] : top;
+    stops.push([Math.round(v * 10) / 10, theme.ramp[i]]);
   }
+  stops.sort((a, b) => a[0] - b[0]);
+  const ramp: unknown[] = stops.flatMap(([v, c]) => [v, c]);
   return [
     "case",
     // typeof guard: anything not a plain number (null, "N/A", missing, NaN)

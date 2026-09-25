@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createExpression, v8} from '@maplibre/maplibre-gl-style-spec';
-import {OBSERVED_THEMES, UNAVAILABLE_THEMES, colorExpr, opacityExpr, getTheme, legendSwatches} from '../src/symbology.ts';
+import {OBSERVED_THEMES, UNAVAILABLE_THEMES, MODELED_THEMES, colorExpr, opacityExpr, getTheme, legendSwatches} from '../src/symbology.ts';
 const fc = JSON.parse(readFileSync(new URL('../../data/snapshots/footprints_joined.geojson', import.meta.url), 'utf8'));
 let passed = 0;
 function test(name, fn) { fn(); passed++; console.log(`ok ${name}`); }
@@ -73,12 +73,63 @@ test('unsuffixed electricity field is kBtu, not kWh', () => {
 test('property GFA is not allocated by the current data pipeline', () => {
   assert.equal(getTheme('property_gfa_self_reported').disaggregated,false);
 });
-test('annual thermal end uses remain unavailable until modeled', () => {
-  for (const id of ['heating_demand','cooling_demand','dhw_demand']) {
-    const t=UNAVAILABLE_THEMES.find(x=>x.id===id);
-    assert.ok(t);
-    assert.match(t.reason,/model/i);
+test('modeled thermal themes are enabled with honest modeled labels', () => {
+  for (const id of ['heating_demand','cooling_demand','dhw_demand','net_thermal_kbtu_ft2_yr']) {
+    const t = MODELED_THEMES.find(x=>x.id===id);
+    assert.ok(t, `${id} must be a MODELED theme`);
+    assert.match(t.grain,/modeled\/estimated/i);
+    assert.match(t.grain,/not measured/i);
+    assert.match(t.grain,/evidence_tier/i);
+    assert.match(t.grain,/η=0\.8|eta=0\.8/);
     assert.ok(!OBSERVED_THEMES.some(x=>x.id===id));
+    assert.ok(!UNAVAILABLE_THEMES.some(x=>x.id===id));
   }
 });
+// Modeled features come from the merged footprints_joined_demand.geojson.
+const fcModeled = JSON.parse(readFileSync(new URL('../../data/snapshots/footprints_joined_demand.geojson', import.meta.url), 'utf8'));
+
+for (const theme of MODELED_THEMES) {
+  const determining = (props) => props[theme.decidingField];
+  const color = compile(colorExpr({...theme, field: theme.decidingField}), 'fill-color');
+  const opacity = compile(opacityExpr(theme, null), 'fill-opacity');
+  test(`${theme.id} (modeled): schema and honest labeling`, () => {
+    assert.ok(fcModeled.features.some(f => Object.hasOwn(f.properties, theme.decidingField)));
+    // Ramp structure: rampStart (or 0) + one stop per break, plus a tail stop.
+    assert.ok(theme.ramp.length === theme.breaks.length + 1 || theme.ramp.length === theme.breaks.length + 2);
+    assert.equal(legendSwatches(theme).length, theme.ramp.length);
+    theme.breaks.forEach((b,i) => assert.ok(Number.isFinite(b) && b > (i ? theme.breaks[i-1] : theme.breaks[0] < 0 ? -Infinity : 0)));
+    assert.match(theme.grain,/modeled\/estimated/i);
+    assert.match(theme.grain,/not measured/i);
+    assert.match(theme.grain,/evidence_tier/i);
+  });
+  if (theme.id === 'net_thermal_kbtu_ft2_yr') {
+    test('net_thermal: diverging ramp — near zero is neutral, hot/cold map correctly', () => {
+      // Neutral at 0 — which in the diverging theme is break[2] (the "+20" stop
+      // is actually ±0-crossing white): 0 interpolates INTO the white bucket.
+      const c0 = color({'net_thermal_kbtu_ft2_yr':0});
+      assert.ok(c0.r > 0.7 && c0.g > 0.7 && c0.b > 0.7, '0 is light/neutral, not saturated');
+      // Positive (net heating) → red side; negative (net cooling) → blue side.
+      const plus = color({'net_thermal_kbtu_ft2_yr':200});
+      const minus = color({'net_thermal_kbtu_ft2_yr':-200});
+      assert.ok(plus.r > plus.b, '+200 is red-dominant');
+      assert.ok(minus.b > minus.r, '−200 is blue-dominant');
+      // Just above lower edge of neutral band is NOT fully saturated either way.
+      const c5 = color({'net_thermal_kbtu_ft2_yr':5});
+      assert.ok(c5.g > c5.r, '+5 should lean blue, not red');
+    });
+  }
+  test(`${theme.id} (modeled): missing and nonnumeric values stay gray`, () => {
+    for (const p of [{},{[theme.decidingField]:null},{[theme.decidingField]:'N/A'}]) {
+      closeColor(color(p),theme.nullGray);
+      assert.equal(opacity(p),0.16);
+    }
+  });
+  test(`${theme.id} (modeled): full merged snapshot evaluates`, () => {
+    for (const f of fcModeled.features) {
+      const c = color(f.properties);
+      for (const key of ['r','g','b','a']) assert.ok(Number.isFinite(c[key]));
+      assert.ok(opacity(f.properties)>0);
+    }
+  });
+}
 console.log(`Symbology tests: ${passed} passing; ${fc.features.length} features checked per theme.`);

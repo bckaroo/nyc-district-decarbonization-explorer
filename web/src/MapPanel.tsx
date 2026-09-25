@@ -4,6 +4,7 @@ import type { StyleSpecification } from "maplibre-gl";
 import type { PropertySummary } from "./api";
 import {
   OBSERVED_THEMES,
+  MODELED_THEMES,
   UNAVAILABLE_THEMES,
   colorExpr,
   getTheme,
@@ -449,13 +450,22 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
                 </option>
               ))}
             </optgroup>
-            <optgroup label="Modeled (not yet available)">
-              {UNAVAILABLE_THEMES.map((u) => (
-                <option key={u.id} value={u.id} disabled title={u.reason}>
-                  {u.label} — requires modeled end-use data
+            <optgroup label="Modeled (estimated, not measured)">
+              {MODELED_THEMES.map((t) => (
+                <option key={t.id} value={t.id} title={t.modelNote}>
+                  {t.label} — {t.units}
                 </option>
               ))}
             </optgroup>
+            {UNAVAILABLE_THEMES.length > 0 && (
+              <optgroup label="Not yet available">
+                {UNAVAILABLE_THEMES.map((u) => (
+                  <option key={u.id} value={u.id} disabled title={u.reason}>
+                    {u.label} — requires modeled end-use data
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
           <div className="symbology-legend" data-testid="symbology-legend">
             <span className="legend-title">
@@ -473,6 +483,11 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
                 no data
               </span>
             </div>
+            {"modelNote" in theme && (theme as { modelNote?: string }).modelNote && (
+              <span className="legend-modelnote">
+                {(theme as { modelNote: string }).modelNote}
+              </span>
+            )}
           </div>
           <div className="symbology-grain">
             {theme.grain}

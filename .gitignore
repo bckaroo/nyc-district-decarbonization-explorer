@@ -14,3 +14,6 @@ data/citywide/*.sqlite*
 data/citywide/mappluto_lots.sqlite
 data/citywide/mappluto_lots.sqlite-wal
 data/citywide/mappluto_lots.sqlite-shm
+
+# citywide demand SQLite (served from data/, not git)
+data/citywide/annual_demand_citywide/*.sqlite*

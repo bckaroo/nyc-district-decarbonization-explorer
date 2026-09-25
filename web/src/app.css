@@ -357,3 +357,8 @@ thead th:focus-visible { outline-offset: -2px; }
   line-height: 1.35;
   color: var(--faint);
 }
+.legend-modelnote {
+  font-size: 0.62rem;
+  line-height: 1.35;
+  color: var(--warn, #fbbf24);
+}
