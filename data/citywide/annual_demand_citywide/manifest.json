@@ -1,6 +1,6 @@
 {
   "model_version": "v1.0 (citywide per-lot)",
-  "generated_utc": "2026-09-25T15:07:25+00:00",
+  "generated_utc": "2026-09-25T15:12:36+00:00",
   "inputs": {
     "ll84_citywide_file": "ll84_citywide_2024_v2.raw.jsonl",
     "ll84_citywide_sha256": "79bb98f5b326a25971ffe603067bf25a114d0ab51b66fa87cbe59ba9e4a9d52e",

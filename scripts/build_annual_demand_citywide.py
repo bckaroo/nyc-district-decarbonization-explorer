@@ -202,6 +202,21 @@ def acquire_lock() -> None:
     LOCK.write_text(str(os.getpid()))
 
 
+def release_lock() -> None:
+    """Remove the lock on a clean finish.
+
+    Only if it still names THIS process: a stale lock is auto-cleared on the next
+    run, but leaving one behind after a successful exit makes `ls *.lock` look
+    like a build is in flight when nothing is.
+    """
+    LOCK = SCRATCH / "build_annual_demand_citywide.lock"
+    try:
+        if LOCK.exists() and LOCK.read_text().strip() == str(os.getpid()):
+            LOCK.unlink()
+    except OSError:
+        pass
+
+
 def main() -> None:
     acquire_lock()
     # Invalidate any existing manifest up front: if this run is interrupted after
@@ -499,6 +514,7 @@ def main() -> None:
     }
     # The verifier writes the manifest itself, so there is no separate write.
     rc = publish_and_write_manifest(manifest)
+    release_lock()
     if rc != 0:
         raise SystemExit(rc)
     print(json.dumps({
