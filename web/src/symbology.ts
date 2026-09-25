@@ -168,7 +168,7 @@ const MODEL_GRAIN =
 const NET_THERMAL_THEME: ModeledThemeDef = {
   id: "net_thermal_kbtu_ft2_yr",
   label: "Net thermal demand (modeled)",
-  field: "NET_THERMAL_SENTINEL",
+  field: "net_thermal_kbtu_ft2_yr",
   decidingField: "net_thermal_kbtu_ft2_yr",
   units: "kBtu/ft²·yr",
   grain: MODEL_GRAIN,
