@@ -29,10 +29,13 @@ end-use totals are therefore LL84-covered totals, never citywide totals.
 Outputs (geometry stays in mappluto_lots.sqlite — not duplicated here):
   data/citywide/annual_demand_citywide/annual_demand_citywide.sqlite
       (table annual_demand, bbl PK + tier/borough/bbox indexes)
-  data/citywide/annual_demand_citywide/annual_demand_citywide.parquet (mirror)
   data/citywide/annual_demand_citywide/manifest.json
 Terminal print: counts, conservation receipt, borough distributions.
 
+Optional: a .parquet mirror is written when pandas+pyarrow are importable. It is
+NOT a dependency, so on a venv without pandas the mirror is skipped and the
+manifest records status "skipped" rather than implying the file exists. Nothing
+in the app reads it — the SQLite is the served artifact.
 Run: .venv/bin/python3 scripts/build_annual_demand_citywide.py
 """
 from __future__ import annotations
