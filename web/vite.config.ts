@@ -12,10 +12,15 @@ export default defineConfig({
     {
       name: 'copy-maplibre-worker',
       closeBundle() {
-        const src = resolve(__dirname, 'node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs')
         const destDir = resolve(__dirname, 'dist/assets')
         mkdirSync(destDir, { recursive: true })
-        cpSync(src, resolve(destDir, 'maplibre-gl-worker.mjs'))
+        // Worker entry alone is not enough: it statically imports the shared
+        // chunk, which must sit next to it or the worker fails to load (a
+        // 404-html fallthrough) and no tiles/polygons ever parse.
+        for (const f of ['maplibre-gl-worker.mjs', 'maplibre-gl-shared.mjs']) {
+          const src = resolve(__dirname, 'node_modules/maplibre-gl/dist', f)
+          cpSync(src, resolve(destDir, f))
+        }
       },
     },
   ],

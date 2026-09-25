@@ -23,17 +23,24 @@ const PUBLIC_STYLE: StyleSpecification = {
   ],
 };
 
-// EUI color ramp (kBtu/ft2·yr): teal (low) -> green -> yellow -> orange -> red (high)
+// EUI color ramp (kBtu/ft2·yr): teal (low) -> green -> yellow -> orange -> red
+// (high). Features with a null/missing EUI are drawn gray, not dropped: the
+// numeric ramp's ["to-number", ...] input would error on null.
 function euiColorExpr(): unknown {
   return [
-    "interpolate",
-    ["linear"],
-    ["to-number", ["get", "site_eui_kbtu_ft"]],
-    0, "#22d3ee",
-    60, "#34d399",
-    100, "#fbbf24",
-    160, "#fb923c",
-    240, "#f87171",
+    "case",
+    ["!", ["has", "site_eui_kbtu_ft"]],
+    "#94a3b8",
+    [
+      "interpolate",
+      ["linear"],
+      ["to-number", ["get", "site_eui_kbtu_ft"]],
+      0, "#22d3ee",
+      60, "#34d399",
+      100, "#fbbf24",
+      160, "#fb923c",
+      240, "#f87171",
+    ],
   ];
 }
 
@@ -55,6 +62,12 @@ interface Props {
 export default function MapPanel({ properties, selectedId, onSelect }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  // Latest props, so async layer-attachment uses current data (stale-closure fix)
+  const propsRef = useRef<{ properties: PropertySummary[]; selectedId: string | null }>({
+    properties,
+    selectedId,
+  });
+  propsRef.current = { properties, selectedId };
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"points" | "footprints">("points");
 
@@ -62,6 +75,7 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
     if (!containerRef.current || mapRef.current) return;
     let cancelled = false;
     let tileErrorCount = 0;
+    let dataLayersAdded = false;
     try {
       const map = new maplibregl.Map({
         container: containerRef.current,
@@ -87,6 +101,11 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
       // Add data sources as soon as the style is USABLE, not fully loaded.
       const addDataLayers = () => {
         if (cancelled) return;
+        // Idempotence: both the 'load' handler and the 2.5s fallback call this;
+        // a second run would throw "source already exists" and break rendering.
+        if (dataLayersAdded) return;
+        if (!map.isStyleLoaded()) return; // retry via the pending timer/load
+        dataLayersAdded = true;
         // --- footprint polygons (fetched from /api/footprints, joined w/ energy) ---
         fetch("/api/footprints")
           .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
@@ -107,7 +126,7 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
               source: "footprints",
               paint: {
                 "fill-color": euiColorExpr() as never,
-                "fill-opacity": FP_HIGHLIGHT(selectedId) as never,
+                "fill-opacity": FP_HIGHLIGHT(propsRef.current.selectedId) as never,
               },
             });
             map.addLayer({
@@ -131,8 +150,10 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
               map.getCanvas().style.cursor = "";
             });
           })
-          .catch(() => {
-            /* footprints unavailable — points fallback stays visible */
+          .catch((err: unknown) => {
+            if (cancelled) return;
+            console.error("[map] footprints layer failed:", err);
+            setError("Building footprints could not load — table remains available.");
           });
         // --- property points (marker for properties w/o a footprint match) ---
         map.addSource("props", {
@@ -157,7 +178,7 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
             onSelect(f.properties.id);
           }
         });
-        setFeatures(properties);
+        setFeatures(propsRef.current.properties);
       };
       // Prefer the standard load event, but don't depend on it: if tiles hang,
       // the style is still structurally ready and data layers can attach.
@@ -178,7 +199,8 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
         });
         void t;
       }
-    } catch {
+    } catch (err) {
+      console.error("[map] init failed:", err);
       setError("Map could not initialize — table remains available.");
     }
     return () => {
@@ -190,14 +212,14 @@ export default function MapPanel({ properties, selectedId, onSelect }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function setFeatures(properties: PropertySummary[]) {
+  function setFeatures(props = propsRef.current.properties) {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
     const src = map.getSource("props") as maplibregl.GeoJSONSource | undefined;
     if (!src) return;
     src.setData({
       type: "FeatureCollection",
-      features: properties
+      features: props
         .filter((p) => p.latitude !== null && p.longitude !== null)
         .map((p) => ({
           type: "Feature" as const,

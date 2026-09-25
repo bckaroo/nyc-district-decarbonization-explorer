@@ -20,6 +20,34 @@ project **PROJ-026**). New entries go at the top.
 - Known follow-ups: no git remote yet (optional promote); port 3320 is dev
   range — register in ports.json if promoted to persistent service.
 
+## Round 3 — 2026-09-25 (hermes) · DEV-154: map layer fix finalized
+
+- Fix summary (carried over from Rounds 2/3 work): `web/vite.config.ts` now
+  copies BOTH `maplibre-gl-worker.mjs` AND `maplibre-gl-shared.mjs` into
+  `dist/assets` — the worker statically imports the shared chunk, so with only
+  the worker copied the import 404'd (HTML fallthrough) and no tiles/polygons
+  ever parsed. `MapPanel.tsx`: idempotent layer init (guard against duplicate
+  sources from load + fallback timer), latest-props ref for async layer
+  attachment, null-safe EUI color (missing EUI drawn gray, not dropped), and
+  surfaced load errors instead of silent catch.
+- Regression test added: `tests/unit/test_static_assets.py`
+  asserts the built worker's relative `import`/`import()` specifiers resolve to
+  real JS files in `dist/assets` (not just that config strings exist). Skips
+  cleanly if `web/dist` is not built.
+- Verification: production `npm run build` OK (1.24 MB bundle built in 1.21s);
+  `dist/assets/{maplibre-gl-worker.mjs, maplibre-gl-shared.mjs}` present;
+  pytest 65/65 pass (63 pre-existing + 2 new asset tests);
+  live service :3320 serves `/` 200 text/html, `/assets/maplibre-gl-worker.mjs`
+  200 text/javascript, `/assets/maplibre-gl-shared.mjs` 200 text/javascript.
+- Desktop visual evidence (obtained in prior round): colored outlined teal /
+  green / yellow / orange building polygons render in Midtown
+  (evidence/postfix_desktop.png).
+- Honest limitation: mobile rendering and footprint-selection interaction not
+  visually verified in this round; polygon paint/execution verified via API
+  asset checks + desktop screenshot only.
+- Manifest `data/snapshots/footprints_joined.manifest.json` timestamp bumped by
+  an unrelated run — not included in the DEV-154 commit.
+
 ## Round 2 — 2026-09-25 (hermes)
 
 - Chained footprints build into build_pilot.py: one command now rebuilds the
