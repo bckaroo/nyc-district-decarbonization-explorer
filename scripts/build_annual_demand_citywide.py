@@ -428,6 +428,9 @@ def main() -> None:
         }
 
     lots_with_ll84 = sum(1 for r in lots if str(r["bbl"]) in rows_by_bbl)
+    # Built once and reused in the manifest (see the note there on why the set
+    # must not be rebuilt inside the comprehension).
+    lot_bbl_set = {str(r["bbl"]) for r in lots}
     manifest = {
         "model_version": MODEL_VERSION,
         "generated_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -450,8 +453,15 @@ def main() -> None:
             "lots_with_ll84": lots_with_ll84,
             "ll84_rows_total": ll84_rows,
             "ll84_distinct_bbl": len(rows_by_bbl),
+            # Hoist the lot-BBL set OUT of the comprehension. As written
+            # (`sum(1 for b in rows_by_bbl if b in {str(r["bbl"]) for r in lots})`)
+            # the set was rebuilt for every one of the ~26k keys, i.e. ~22 billion
+            # operations: measured 0.255s/key => ~111 minutes, which is why a
+            # build that had already published its database then sat at 100% CPU
+            # for half an hour instead of writing its manifest.
             "ll84_bbl_mapped_to_lots": sum(
-                1 for b in rows_by_bbl if b in {str(r["bbl"]) for r in lots}),
+                1 for b in rows_by_bbl if b in lot_bbl_set
+            ),
             "lots_with_bldg_area": len(bldg_area_by_bbl),
             "campus_apportion_groups": apportion_groups,
             "campus_apportioned_lots": apportioned_lots,

@@ -1,0 +1,131 @@
+{
+  "model_version": "v1.0 (citywide per-lot)",
+  "generated_utc": "2026-09-25T15:07:25+00:00",
+  "inputs": {
+    "ll84_citywide_file": "ll84_citywide_2024_v2.raw.jsonl",
+    "ll84_citywide_sha256": "79bb98f5b326a25971ffe603067bf25a114d0ab51b66fa87cbe59ba9e4a9d52e",
+    "ll84_manifest_sha256": "7d2d83fb4977aebc5e46a91b06b5fced14cbdb461c6376b5f6d7073144dcdc95",
+    "mappluto_lots_sqlite": "mappluto_lots.sqlite",
+    "mappluto_sqlite_sha256": "dba1cf60abae9803706227a2d4001e25d29db374b514601606d1485897fae95c",
+    "params_sha256": "d676bb06d6718c7815e3584e375c504ca97b37ba8429a13856947d20c5a35ebb",
+    "citywide_footprint_geojson": "data/citywide/footprints_citywide.raw.geojson (DOB 5zhs-2jue bulk export) is ingested into footprints_citywide.sqlite and served by /api/footprints/bbox; MapPLUTO lot polygons (856,687) remain the separate per-lot layer served by /api/parcels."
+  },
+  "counts": {
+    "lots_total": 856687,
+    "lots_with_ll84": 26198,
+    "ll84_rows_total": 39090,
+    "ll84_distinct_bbl": 26438,
+    "ll84_bbl_mapped_to_lots": 26198,
+    "lots_with_bldg_area": 816088,
+    "campus_apportion_groups": 535,
+    "campus_apportioned_lots": 24758,
+    "campus_unmapped_child_bbls": 1395
+  },
+  "counts_by_tier": {
+    "T1_observed_full": 25645,
+    "T2_intensity_only": 61,
+    "T4_footprint_numeric_only": 830981
+  },
+  "aggregate_conservation_check": {
+    "note": "T1 rows: \u03a3 allocated (space_heating + DHW) = \u03a3 (apportionment-scaled) observed_gas \u00d7 1.0 \u00d7 \u03b7=0.80, by algebraic construction (shares sum to 1.0). Same receipt semantics as the pilot manifest.",
+    "observed_gas_kbtu_t1": 65603976027.2,
+    "allocated_heat_plus_dhw_kbtu_t1": 52483180832.9,
+    "implied_eta": 0.8,
+    "as_expected": true
+  },
+  "intensity_distributions_kbtu_ft2_yr": {
+    "space_heating_kbtu_ft2_yr": {
+      "n": 24053,
+      "median": 26.22,
+      "p10": 5.67,
+      "p90": 48.27
+    },
+    "dhw_kbtu_ft2_yr": {
+      "n": 24053,
+      "median": 12.57,
+      "p10": 2.0,
+      "p90": 26.4
+    },
+    "cooling_kbtu_ft2_yr": {
+      "n": 25247,
+      "median": 13.0,
+      "p10": 7.29,
+      "p90": 33.75
+    }
+  },
+  "end_use_totals_kbtu_by_borough": {
+    "BK": {
+      "cooling_kbtu": 2142928886.0,
+      "dhw_kbtu": 1442292602.4,
+      "space_heating_kbtu": 2666086463.9
+    },
+    "BX": {
+      "cooling_kbtu": 1768888476.9,
+      "dhw_kbtu": 4358460836.6,
+      "space_heating_kbtu": 21441977907.8
+    },
+    "MN": {
+      "cooling_kbtu": 4184888683.3,
+      "dhw_kbtu": 3281232509.5,
+      "space_heating_kbtu": 12033216776.8
+    },
+    "QN": {
+      "cooling_kbtu": 1995936577.3,
+      "dhw_kbtu": 2050388606.8,
+      "space_heating_kbtu": 3591522842.2
+    },
+    "SI": {
+      "cooling_kbtu": 746577799.8,
+      "dhw_kbtu": 509620545.4,
+      "space_heating_kbtu": 1108381793.4
+    }
+  },
+  "tiers_by_borough": {
+    "BK": {
+      "T1_observed_full": 6556,
+      "T4_footprint_numeric_only": 269055,
+      "T2_intensity_only": 17
+    },
+    "BX": {
+      "T4_footprint_numeric_only": 84311,
+      "T1_observed_full": 4852,
+      "T2_intensity_only": 14
+    },
+    "MN": {
+      "T4_footprint_numeric_only": 32568,
+      "T1_observed_full": 9438,
+      "T2_intensity_only": 17
+    },
+    "QN": {
+      "T4_footprint_numeric_only": 319812,
+      "T1_observed_full": 4327,
+      "T2_intensity_only": 11
+    },
+    "SI": {
+      "T4_footprint_numeric_only": 125235,
+      "T1_observed_full": 472,
+      "T2_intensity_only": 2
+    }
+  },
+  "outputs": {
+    "sqlite": {
+      "file": "annual_demand_citywide.sqlite",
+      "sha256": "9f9dc678a034041611767c0d6b091c43451ec35e6b630c197bafad1a5c070704",
+      "bytes": 187305984,
+      "rows": 856687
+    },
+    "parquet": {
+      "file": "annual_demand_citywide.parquet",
+      "status": "skipped (ModuleNotFoundError: No module named 'pandas')"
+    },
+    "geometry_note": "lot geometry remains in mappluto_lots.sqlite (served by /api/parcels) \u2014 not duplicated here"
+  },
+  "no_synthesis_rule": "T3 archetype intensity priors are NOT applied. Lots without an LL84 row are T4 with null end-uses. Citywide end-use totals are LL84-covered totals, explicitly NOT citywide totals.",
+  "honest_limits": [
+    "No invented confidence intervals: outputs carry evidence tier + method tag, not a CI.",
+    "Missing inputs produce null end-uses, never zero.",
+    "Campus/parent-child disaggregation is allocation-based (area-weighted), carried as flags disagg/ disagg_weight/ disagg_n from build_pilot.py; conservation checks vs LL84 property aggregates.",
+    "Site EUI out of physical plausibility (>9999 kBtu/ft2, e.g. data-entry outliers) kept as OBSERVED but flagged desc_outlier; not silently winsorized."
+  ],
+  "shares_parameterized_replacement_note": "All shares are FIXED CONSTANTS (end-use split priors). They are deliberately parameterized here (not hardcoded) so the modeling workstream (DEV-alternative iterations, e.g. regression on LL84 fuels + heating-degree disaggregation) can replace them wholesale without touching pipeline logic. Each constant cites its source. These are priors, NOT per-building fits \u2014 no invented precision: every modeled output carries an evidence tier and 'model:additive-end-use-split' method tag."
+}
