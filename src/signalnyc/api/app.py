@@ -183,9 +183,11 @@ def create_app(
     # ---- citywide ParcelStore (MapPLUTO + citywide LL84 join) -----------------
     from .citywide_parcels import ParcelStore
     from .citywide_footprints import FootprintStore
+    from .citywide_demand import DemandStore
 
     _citywide_store: ParcelStore | None = None
     _footprint_store: FootprintStore | None = None
+    _demand_store_ref: DemandStore | None = None
 
     def _parcel_store() -> ParcelStore:
         nonlocal _citywide_store
@@ -198,6 +200,12 @@ def create_app(
         if _footprint_store is None:
             _footprint_store = FootprintStore()
         return _footprint_store
+
+    def _demand_store() -> DemandStore:
+        nonlocal _demand_store_ref
+        if _demand_store_ref is None:
+            _demand_store_ref = DemandStore()
+        return _demand_store_ref
 
     # ---- citywide footprints (all DOB buildings, not just the pilot) --------
     @app.get("/api/footprints/bbox", include_in_schema=True)
@@ -277,6 +285,78 @@ def create_app(
             "footprints": feats,
             "footprints_in_bbox": matched,
             "truncated": truncated,
+        }
+
+    @app.get("/api/building/{bbl}", include_in_schema=True)
+    def api_building_detail(bbl: str):
+        """Everything known about ONE building, keyed by BBL.
+
+        Map-first entry point: a click on a footprint yields a BBL, and the vast
+        majority of the 1,083,047 citywide footprints have no row in the LL84
+        slice that backs the property table. Without this endpoint a click on
+        almost any building resolved to nothing, so the table could only be
+        reached from a search that already knew the property.
+
+        Returns footprint identity (BIN/name/height), the observed LL84 join
+        when one exists, and the modeled demand when one exists — with explicit
+        flags distinguishing "not modeled" from "zero", and LL84's
+        "not required to report" from "reports nothing".
+        """
+        store = _fp_store()
+        rec = store.by_bbl(bbl)
+        if rec is None:
+            raise HTTPException(status_code=404, detail=f"no footprint for BBL {bbl}")
+
+        props = rec["properties"]
+        bin_id = props.get("bin")
+
+        # Observed LL84 (property-level) — may legitimately be absent.
+        observed = None
+        try:
+            parcel = _parcel_store().by_bbl_record(bbl)
+            if parcel:
+                observed = parcel
+        except FileNotFoundError:
+            observed = None
+
+        # Modeled annual demand (BBL-keyed) — separate store from observed.
+        modeled = None
+        try:
+            demand = _demand_store().by_bbl(bbl)
+            if demand:
+                modeled = demand
+        except FileNotFoundError:
+            modeled = None
+
+        return {
+            "bbl": bbl,
+            "bin": bin_id,
+            "geometry": rec.get("geometry"),
+            "footprint": {
+                k: props.get(k)
+                for k in (
+                    "name", "height_roof", "construction_year",
+                    "shape_area", "has_ll84",
+                )
+            },
+            "observed": observed,
+            "modeled": modeled,
+            "evidence": {
+                # Distinguish the two independent absences. Collapsing them is
+                # how a building with no obligation to benchmark gets presented
+                # as a building that reported nothing.
+                "has_footprint": True,
+                "has_ll84_join": bool(props.get("has_ll84")),
+                "ll84_note": (
+                    "LL84 benchmarks buildings above the LL97 size threshold; "
+                    "absent means 'not required to report', not 'zero energy'."
+                ),
+                "has_modeled_demand": modeled is not None,
+                "modeled_note": (
+                    "Modeled annual end-use demand, not a measurement. Null means "
+                    "not modeled, never zero."
+                ),
+            },
         }
 
     @app.get("/api/footprints/coverage", include_in_schema=True)

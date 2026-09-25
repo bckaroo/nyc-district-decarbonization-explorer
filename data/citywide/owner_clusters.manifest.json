@@ -78,9 +78,10 @@
       "%HEALTH AND HOSPITALS%"
     ]
   },
-  "target_bbls": 1754,
-  "joined_bbls": 1678,
   "campus_count": 39,
+  "geojson_bytes": 99806,
   "geojson_sha256": "913acd1ab3cb277cb6cdb219ed766d5a93f9c3b53050e4d930af10a385a8b707",
-  "generated_utc": "2026-09-25T14:10:28Z"
+  "generated_utc": "2026-09-25T14:20:33Z",
+  "target_bbls": 1754,
+  "joined_bbls": 1678
 }

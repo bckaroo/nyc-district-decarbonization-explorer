@@ -127,6 +127,80 @@ html, body, #root {
   border-bottom: 1px solid var(--border-soft);
 }
 
+/* Map expands to fill the work area when the table is collapsed: the grid's
+   first row takes everything and the table row is removed from the template. */
+.work-area.table-hidden {
+  grid-template-rows: minmax(240px, 1fr) 0;
+}
+
+/* Fullscreen map. Applied to MapPanel's own wrapper so the toggle needs no prop
+   drilling. Uses fixed positioning rather than the Fullscreen API so it works
+   identically in every browser and inside an iframe, and so the toggle is a pure
+   CSS state with nothing to tear down on unmount. */
+.map-wrap.map-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: #0b0e14;
+}
+.map-wrap.map-fullscreen .maplibregl-map { width: 100%; height: 100%; }
+
+.map-toolbar {
+  position: absolute;
+  top: 10px; right: 10px;
+  z-index: 12;
+  display: flex; gap: 6px;
+}
+.map-tool-btn {
+  background: rgba(11,14,20,.85);
+  color: #cbd5e1;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 4px 9px;
+  font-size: 0.72rem;
+  font-family: inherit;
+  cursor: pointer;
+  line-height: 1.4;
+}
+.map-tool-btn:hover { background: rgba(30,41,59,.95); color: #f1f5f9; }
+.map-tool-btn[aria-pressed="true"] {
+  background: rgba(56,189,248,.22);
+  border-color: #38bdf8;
+  color: #e0f2fe;
+}
+
+/* Table collapse handle. Sits at the top edge of the table pane and is the
+   click target that hides/shows it. */
+.table-collapse-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 0.72rem;
+  color: #9fb8c8;
+}
+.table-collapse-bar:hover { color: #e2e8f0; background: rgba(30,41,59,.6); }
+.table-collapse-bar .chev { font-size: 0.8rem; }
+.table-collapsed-note { padding: 6px 10px; font-size: 0.72rem; color: #8ba3b5; }
+
+/* Brief highlight on the table row a map click landed on. */
+tr.row-flash { animation: rowflash 1.4s ease-out; }
+@keyframes rowflash {
+  0%   { background: rgba(56,189,248,.55); }
+  100% { background: transparent; }
+}
+
+.dossier-sub {
+  margin: 10px 0 4px;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: #7fb3d0;
+}
+
 /* ---------- Analysis rail (right) ---------- */
 .viz-pane {
   display: flex;

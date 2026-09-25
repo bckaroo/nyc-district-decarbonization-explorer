@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   api,
   fmtInt,
   MISSING_FIELD_OPTIONS,
+  type BuildingDetail,
   type Counters,
   type PropertyDetail,
   type PropertySummary,
@@ -63,6 +64,13 @@ export default function App() {
     footprintsInBbox: number;
     basis: string;
   } | null>(null);
+  // Collapsing the table lets the map take the full work area.
+  const [tableHidden, setTableHidden] = useState(false);
+  // Set when a map click resolves to a building, so the table can scroll its row
+  // into view and flash it. Changing the value re-triggers the effect even when
+  // the same row is clicked twice.
+  const [rowFocus, setRowFocus] = useState<{ id: string; n: number } | null>(null);
+  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
   useEffect(() => {
     api.snapshot().then(setSnapshot).catch(() => setSnapshot(null));
@@ -100,6 +108,47 @@ export default function App() {
       setError((e as Error).message);
     }
   }
+
+  // A map click on a footprint. Two outcomes:
+  //  (a) the BBL is in the loaded table -> select that row, scroll it into view
+  //      and flash it, which is the "click a building, see its row" behaviour;
+  //  (b) it is NOT in the table (the normal case — the table holds an LL84
+  //      slice, the map draws all 1,083,047 footprints) -> fetch the building
+  //      from /api/building/{bbl} so its identity, observed LL84 join and
+  //      modelled demand still resolve.
+  const [building, setBuilding] = useState<BuildingDetail | null>(null);
+
+  function selectBuildingByBbl(bbl: string) {
+    const inTable = rows.find((r) => r.bbl === bbl);
+    if (inTable) {
+      selectRow(inTable.property_id);
+      setRowFocus({ id: inTable.property_id, n: Date.now() });
+      return;
+    }
+    fetch(`/api/building/${encodeURIComponent(bbl)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d) => {
+        setBuilding(d);
+        setRowFocus(null);
+      })
+      .catch((err: unknown) => {
+        console.error("[app] building fetch failed:", err);
+        setBuilding(null);
+      });
+  }
+
+  // Scroll the clicked row into view and flash it. Runs on rowFocus changes so a
+  // repeat click on the same building re-scrolls (the counter makes it a new
+  // value, so the effect is not skipped as a no-op update).
+  useEffect(() => {
+    if (!rowFocus) return;
+    const el = rowRefs.current[rowFocus.id];
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+    el.classList.add("row-flash");
+    const t = setTimeout(() => el.classList.remove("row-flash"), 1400);
+    return () => clearTimeout(t);
+  }, [rowFocus]);
 
   const sorted = useMemo(() => {
     const copy = [...rows];
@@ -209,7 +258,7 @@ export default function App() {
         readable at a glance instead of table-first.
       */}
       <main className="main">
-        <div className="work-area">
+        <div className={`work-area${tableHidden ? " table-hidden" : ""}`}>
           <div className="map-pane">
             <MapPanel
               properties={sorted}
@@ -219,10 +268,38 @@ export default function App() {
               onThemeChange={setThemeId}
               onFeaturesChange={setFeatures}
               onDistrictSelect={selectDistrict}
+              onBuildingSelect={selectBuildingByBbl}
             />
           </div>
 
           <div className="table-pane">
+            <div
+              className="table-collapse-bar"
+              data-testid="table-collapse-toggle"
+              role="button"
+              tabIndex={0}
+              aria-expanded={!tableHidden}
+              title={tableHidden ? "Show the properties table" : "Hide the table to expand the map"}
+              onClick={() => setTableHidden((v) => !v)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setTableHidden((v) => !v);
+                }
+              }}
+            >
+              <span className="chev" aria-hidden="true">
+                {tableHidden ? "▸" : "▾"}
+              </span>
+              <span>
+                {tableHidden
+                  ? "Properties table hidden — click to show"
+                  : "Hide table (expand map)"}
+              </span>
+              <span className="chev" aria-hidden="true">
+                {tableHidden ? "▸" : "▾"}
+              </span>
+            </div>
             <div className="pane-head">
               <h2>Properties</h2>
               <span className="pane-sub">
@@ -249,6 +326,9 @@ export default function App() {
                   {sorted.map((p) => (
                     <tr
                       key={p.property_id}
+                      ref={(el) => {
+                        rowRefs.current[p.property_id] = el;
+                      }}
                       onClick={() => selectRow(p.property_id)}
                       className={p.property_id === selectedId ? "selected" : ""}
                     >
@@ -322,6 +402,71 @@ export default function App() {
                 <p className="dossier-note">
                   Count is bounding-box based, not polygon containment — a
                   footprint straddling the boundary is included.
+                </p>
+              )}
+            </aside>
+          )}
+          {building && (
+            <aside
+              className="dossier"
+              aria-label="Building dossier"
+              data-testid="building-dossier"
+            >
+              <h2>{building.footprint.name ?? building.bbl ?? "Building"}</h2>
+              <dl>
+                <dt>BBL</dt>
+                <dd>{building.bbl}</dd>
+                <dt>BIN</dt>
+                <dd>{building.bin ?? "—"}</dd>
+                <dt>Construction year</dt>
+                <dd>{fmtCell(building.footprint.construction_year)}</dd>
+                <dt>Roof height</dt>
+                <dd>{fmtCell(building.footprint.height_roof)} ft</dd>
+              </dl>
+              <h3 className="dossier-sub">Observed (LL84)</h3>
+              {building.observed ? (
+                <dl>
+                  <dt>Property ID</dt>
+                  <dd>{String(building.observed.property_id ?? "—")}</dd>
+                  <dt>Site EUI</dt>
+                  <dd>
+                    {fmtCell(building.observed.site_eui_kbtu_ft as number | null)}{" "}
+                    kBtu/ft²·yr
+                  </dd>
+                  <dt>GFA (self-reported)</dt>
+                  <dd>
+                    {fmtCell(building.observed.gfa_sqft as number | null)} ft²
+                  </dd>
+                  <dt>GHG (location-based)</dt>
+                  <dd>
+                    {fmtCell(building.observed.total_ghg_tco2e as number | null)}{" "}
+                    tCO2e
+                  </dd>
+                </dl>
+              ) : (
+                <p className="dossier-note">{building.evidence.ll84_note}</p>
+              )}
+
+              <h3 className="dossier-sub">Modeled annual demand</h3>
+              {building.modeled?.has_end_uses ? (
+                <dl>
+                  <dt>Space heating</dt>
+                  <dd>
+                    {fmtCell(building.modeled.space_heating_kbtu_ft2_yr)}{" "}
+                    kBtu/ft²·yr
+                  </dd>
+                  <dt>Domestic hot water</dt>
+                  <dd>{fmtCell(building.modeled.dhw_kbtu_ft2_yr)} kBtu/ft²·yr</dd>
+                  <dt>Cooling</dt>
+                  <dd>{fmtCell(building.modeled.cooling_kbtu_ft2_yr)} kBtu/ft²·yr</dd>
+                  <dt>Evidence tier</dt>
+                  <dd>{building.modeled.evidence_tier ?? "—"}</dd>
+                  <dt>Archetype</dt>
+                  <dd>{building.modeled.archetype ?? "—"}</dd>
+                </dl>
+              ) : (
+                <p className="dossier-note">
+                  {building.modeled?.note ?? building.evidence.modeled_note}
                 </p>
               )}
             </aside>

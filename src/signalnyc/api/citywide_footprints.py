@@ -188,3 +188,31 @@ class FootprintStore:
             "geometry": json.loads(r["geom"]),
             "properties": props,
         }
+
+    def by_bbl(self, bbl: str) -> dict | None:
+        """Lookup by BBL — the key a map click yields.
+
+        Mirrors by_bin, including the `has_ll84` bool coercion so consumers never
+        receive 0/1 where they expect a boolean. A BBL may map to more than one
+        footprint (condo lots, multiple structures on one lot); the lowest fid is
+        returned deterministically rather than an arbitrary row.
+        """
+        cols = ", ".join(GEO_COLUMNS + ENERGY_COLUMNS + MODELED_COLUMNS)
+        with self._lock:
+            db = self._connect()
+            r = db.execute(
+                f"SELECT {cols}, geom, has_ll84 FROM footprints WHERE bbl=? "
+                "ORDER BY fid LIMIT 1",
+                (bbl,),
+            ).fetchone()
+        if r is None:
+            return None
+        props = {k: r[k] for k in GEO_COLUMNS}
+        props["has_ll84"] = bool(r["has_ll84"])
+        for k in ENERGY_COLUMNS + MODELED_COLUMNS:
+            props[k] = r[k]
+        return {
+            "type": "Feature",
+            "geometry": json.loads(r["geom"]),
+            "properties": props,
+        }

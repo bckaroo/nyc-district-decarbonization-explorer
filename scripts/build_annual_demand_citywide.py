@@ -147,7 +147,65 @@ def load_landuse() -> dict[str, str]:
         con.close()
 
 
+def publish_and_write_manifest(manifest: dict) -> int:
+    """Write the manifest, then verify it actually describes the DB on disk.
+
+    An interrupted run can publish the SQLite and die before the manifest is
+    written, leaving a manifest whose sha256/byte-count describe a DIFFERENT
+    database. That happened here: the served DB was sha 9f9dc678…/T1 25645 while
+    the manifest beside it claimed 7ab58754…/T1 25616. Nothing detected it until
+    a human compared the numbers.
+
+    Writing the manifest last is unavoidable (two files cannot be swapped
+    atomically), so instead of pretending otherwise this VERIFIES the pair and
+    fails loudly.
+    """
+    OUT_MANIFEST.write_text(json.dumps(manifest, indent=2))
+
+    db_sha = sha256_file(OUT_SQLITE)
+    claimed = manifest["outputs"]["sqlite"]["sha256"]
+    ok_sha = db_sha == claimed
+    ok_bytes = OUT_SQLITE.stat().st_size == manifest["outputs"]["sqlite"]["bytes"]
+    if not (ok_sha and ok_bytes):
+        print(
+            "ERROR: manifest does not describe the published database "
+            f"(db sha256 {db_sha} != manifest {claimed}); the pair is inconsistent.",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"  manifest verified against db (sha256 {db_sha[:12]}…)", flush=True)
+    return 0
+
+
+def acquire_lock() -> None:
+    """Refuse to start if another demand build is live.
+
+    Concurrent runs share OUT_SQLITE and OUT_MANIFEST; the loser can leave a
+    manifest and a database that describe different data.
+    """
+    LOCK = SCRATCH / "build_annual_demand_citywide.lock"
+    LOCK.parent.mkdir(parents=True, exist_ok=True)
+    if LOCK.exists():
+        try:
+            other = int(LOCK.read_text().strip())
+        except ValueError:
+            other = None
+        if other and Path(f"/proc/{other}").exists():
+            raise SystemExit(
+                f"another build_annual_demand_citywide is running (pid {other}); "
+                f"refusing to start a second one. Remove {LOCK} if that is stale."
+            )
+        print(f"  clearing stale lock (pid {other} gone)", flush=True)
+    LOCK.write_text(str(os.getpid()))
+
+
 def main() -> None:
+    acquire_lock()
+    # Invalidate any existing manifest up front: if this run is interrupted after
+    # publishing the DB, a MISSING manifest is honest and obvious, whereas a
+    # stale one looks authoritative and is wrong.
+    if OUT_MANIFEST.exists():
+        OUT_MANIFEST.unlink()
     landuse = load_landuse()
 
     # ---- LL84 citywide: keep raw rows grouped by parent (campus groups)
@@ -426,7 +484,10 @@ def main() -> None:
         "honest_limits": PARAMS["limits_and_caveats"],
         "shares_parameterized_replacement_note": PARAMS["notes"],
     }
-    OUT_MANIFEST.write_text(json.dumps(manifest, indent=2))
+    # The verifier writes the manifest itself, so there is no separate write.
+    rc = publish_and_write_manifest(manifest)
+    if rc != 0:
+        raise SystemExit(rc)
     print(json.dumps({
         "rows": inserted,
         "counts": manifest["counts"],

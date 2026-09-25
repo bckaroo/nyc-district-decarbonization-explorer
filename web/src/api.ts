@@ -36,6 +36,48 @@ export interface SearchResponse {
   properties: PropertySummary[];
 }
 
+/** Modelled annual demand for one lot. Nulls mean "not modelled", never zero. */
+export interface ModeledDemandSummary {
+  bbl: string;
+  borough: string | null;
+  land_use: string | null;
+  bldg_area_sqft: number | null;
+  space_heating_kbtu: number | null;
+  dhw_kbtu: number | null;
+  cooling_kbtu: number | null;
+  space_heating_kbtu_ft2_yr: number | null;
+  dhw_kbtu_ft2_yr: number | null;
+  cooling_kbtu_ft2_yr: number | null;
+  evidence_tier: string | null;
+  archetype: string | null;
+  /** False for T4 coverage-only rows: present, but without end-use numbers. */
+  has_end_uses: boolean;
+  note?: string;
+}
+
+/** Everything known about one building, keyed by BBL (map-click entry point). */
+export interface BuildingDetail {
+  bbl: string;
+  bin: string | null;
+  footprint: {
+    name: string | null;
+    height_roof: number | null;
+    construction_year: number | null;
+    shape_area: number | null;
+    has_ll84: boolean | null;
+  };
+  observed: Record<string, unknown> | null;
+  modeled: ModeledDemandSummary | null;
+  evidence: {
+    has_footprint: boolean;
+    has_ll84_join: boolean;
+    ll84_note: string;
+    has_modeled_demand: boolean;
+    modeled_note: string;
+  };
+  geometry?: unknown;
+}
+
 export interface SnapshotInfo {
   snapshot_utc: string | null;
   sha256: string | null;

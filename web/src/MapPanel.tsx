@@ -96,6 +96,8 @@ interface Props {
   onFeaturesChange?: (features: FootFeature[]) => void;
   /** Fired when a predefined study boundary (BID/campus) is clicked. */
   onDistrictSelect?: (districtId: string) => void;
+  /** A footprint click whose BBL has no row in the loaded table. */
+  onBuildingSelect?: (bbl: string) => void;
 }
 
 export default function MapPanel({
@@ -106,6 +108,7 @@ export default function MapPanel({
   onThemeChange,
   onFeaturesChange,
   onDistrictSelect,
+  onBuildingSelect,
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -127,6 +130,7 @@ export default function MapPanel({
     { total: number; bids: number; campuses: number; note: string } | null
   >(null);
   const [districtsVisible, setDistrictsVisible] = useState(false);
+  const [mapFullscreen, setMapFullscreen] = useState(false);
   const theme = getTheme(themeId) ?? OBSERVED_THEMES[0];
   propsRef.current = { properties, selectedId, theme };
 
@@ -222,6 +226,11 @@ export default function MapPanel({
               onSelect(match.property_id);
               return;
             }
+            // No table row for this BBL. Hand the click to the parent so it can
+            // resolve the building from the API — most of the 1.08M footprints
+            // are not in the LL84-slice table, so this is the common path.
+            onBuildingSelect?.(p.bbl);
+            return;
           }
           if (typeof p?.pid === "string") onSelect(p.pid);
         });
@@ -652,6 +661,44 @@ export default function MapPanel({
     else map.once("load", apply);
   }, [districtsVisible]);
 
+  // The map canvas does not learn about a container size change on its own, so
+  // toggling fullscreen (or the table) leaves MapLibre rendering at the old
+  // dimensions — a stretched, wrongly-projected canvas. Resize after the DOM
+  // has reflowed. requestAnimationFrame is not enough on its own here: the
+  // container's box is only final after the layout pass, so also catch the
+  // transition ending and any window resize.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const bump = () => {
+      try {
+        map.resize();
+      } catch {
+        /* map torn down */
+      }
+    };
+    const raf = requestAnimationFrame(() => {
+      bump();
+      // Second pass for the CSS transition (if any) settling.
+      setTimeout(bump, 220);
+    });
+    window.addEventListener("resize", bump);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", bump);
+    };
+  }, [mapFullscreen]);
+
+  // Esc exits the fullscreen map.
+  useEffect(() => {
+    if (!mapFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMapFullscreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mapFullscreen]);
+
   // highlight selection (polygons + points), fly to selection
   useEffect(() => {
     const map = mapRef.current;
@@ -684,7 +731,19 @@ export default function MapPanel({
   }, [selectedId, properties]);
 
   return (
-    <div className="map-wrap">
+    <div className={`map-wrap${mapFullscreen ? " map-fullscreen" : ""}`}>
+      <div className="map-toolbar">
+        <button
+          type="button"
+          className="map-tool-btn"
+          data-testid="map-fullscreen-toggle"
+          aria-pressed={mapFullscreen}
+          title={mapFullscreen ? "Exit full screen (Esc)" : "Full screen map"}
+          onClick={() => setMapFullscreen((v) => !v)}
+        >
+          {mapFullscreen ? "⤡ Exit full screen" : "⤢ Full screen"}
+        </button>
+      </div>
       {error && <div className="map-fallback">{error}</div>}
       {parcelState && !error && (
         <div className="map-parcel-status" data-testid="parcel-status">
