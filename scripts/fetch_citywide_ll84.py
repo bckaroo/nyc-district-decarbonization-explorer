@@ -22,6 +22,12 @@ FIELDS = [
     "direct_ghg_emissions_metric", "direct_ghg_emissions_intensity",
     "total_location_based_ghg", "electricity_use_grid_purchase",
     "natural_gas_use_kbtu", "water_use_all_water_sources",
+    # District/fossil fuels omitted by the first ingest — their absence made
+    # steam-served Manhattan read as cooling-dominant (everything blue).
+    "district_steam_use_kbtu", "district_hot_water_use_kbtu",
+    "district_chilled_water_use",
+    "fuel_oil_1_use_kbtu", "fuel_oil_2_use_kbtu", "fuel_oil_4_use_kbtu",
+    "fuel_oil_5_6_use_kbtu", "diesel_2_use_kbtu", "propane_use_kbtu",
 ]
 OUT = os.path.join(REPO, "data", "citywide")
 

@@ -1,61 +1,61 @@
 {
   "model_version": "v1.0",
-  "generated_utc": "2026-09-25T11:53:27+00:00",
+  "generated_utc": "2026-09-25T13:11:07+00:00",
   "inputs": {
     "footprints_geojson": "footprints_joined.geojson",
-    "footprints_sha256": "5d809a090d62dd4a1a388fc38e1644ad81718d6fc00b41bc198ebd01b06b2e38",
-    "ll84_snapshot": "data/snapshots/ll84_2024_midtown_core.raw.jsonl",
+    "footprints_sha256": "e31d842f948c6d31da1e92b912341867e7c4433b2cdc51c90a8ad71000532937",
+    "ll84_snapshot": "data/snapshots/ll84_2024_midtown_core_v2.raw.jsonl",
     "mappluto_sqlite": "data/citywide/mappluto_lots.sqlite",
     "params_sha256": "d676bb06d6718c7815e3584e375c504ca97b37ba8429a13856947d20c5a35ebb"
   },
   "output": {
     "file": "annual_demand.geojson",
     "features": 932,
-    "sha256": "4a515af11bce49cb29e0cdff203ab966a0184c76c599b7602a429c4ea66525b8",
-    "bytes": 1278984
+    "sha256": "a46e58c20ddf1b8e677c536edd82cfb098ba910f33558b2e0c9d2659090c606a",
+    "bytes": 1542272
   },
   "counts_by_tier": {
-    "T1_observed_full": 919,
-    "T4_footprint_numeric_only": 13
+    "T1_observed_full": 922,
+    "T4_footprint_numeric_only": 10
   },
   "aggregate_conservation_check": {
-    "note": "T1 gas rows: \u03a3 allocated (space_heating+DHW) = \u03a3 observed_gas \u00d7 (share_h+share_d=1.0) \u00d7 \u03b7=0.80, i.e. exactly 0.80\u00d7 observed, by algebraic construction. The 20% difference is real fuel-to-delivered-heat efficiency loss (stack/excess-air), intentionally NOT stored as an end-use bucket. Recorded as a reproducibility receipt and sanity check that shares+\u03b7 were applied as parameterized; not a statistical finding.",
-    "observed_gas_kbtu_t1": 3158994903.7,
-    "allocated_heat_plus_dhw_kbtu_t1": 2527195923.1,
+    "note": "T1 rows: \u03a3 allocated (space_heating+DHW) = \u03a3 (all heating fuels \u00d7 split \u00d7 \u03b7). At \u03b7=0.80 the allocated total is exactly 0.80\u00d7 the summed heating-fuel input by algebraic construction. The 20% difference is real fuel-to-delivered-heat efficiency loss (stack/excess-air), intentionally NOT stored as an end-use bucket. Denominator includes district steam, district hot water, and the fuel oils \u2014 not gas alone. Recorded as a reproducibility receipt and sanity check that shares+\u03b7 were applied as parameterized; not a statistical finding.",
+    "observed_heating_fuel_kbtu_t1": 9470858767.2,
+    "allocated_heat_plus_dhw_kbtu_t1": 7576687015.0,
     "implied_eta": 0.8,
     "as_expected": true
   },
   "null_counts": {
-    "heating": 235,
+    "heating": 56,
     "cooling": 16
   },
   "intensity_distributions_kbtu_ft2_yr": {
     "space_heating": {
-      "n": 697,
-      "median": 5.25,
-      "p10": 0.12,
-      "p90": 34.72,
-      "max": 1342.4
+      "n": 876,
+      "median": 19.77,
+      "p10": 5.03,
+      "p90": 44.15,
+      "max": 7172.92
     },
     "dhw": {
-      "n": 697,
-      "median": 1.81,
-      "p10": 0.04,
-      "p90": 13.9,
-      "max": 447.47
+      "n": 876,
+      "median": 4.17,
+      "p10": 0.91,
+      "p90": 14.57,
+      "max": 796.99
     },
     "cooling": {
       "n": 916,
-      "median": 88.45,
-      "p10": 34.38,
-      "p90": 158.21,
-      "max": 671.27
+      "median": 25.92,
+      "p10": 10.08,
+      "p90": 46.37,
+      "max": 196.74
     }
   },
   "aggregate_kbtu_by_tier": {
-    "T1_observed_full:cooling": 28083341793.7,
-    "T1_observed_full:dhw": 669753683.0,
-    "T1_observed_full:space_heating": 1857442240.1
+    "T1_observed_full:cooling": 8230756679.8,
+    "T1_observed_full:dhw": 1247849808.8,
+    "T1_observed_full:space_heating": 6328837206.2
   },
   "honest_limits": [
     "No invented confidence intervals: outputs carry evidence tier + method tag, not a CI.",

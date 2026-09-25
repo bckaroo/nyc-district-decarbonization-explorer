@@ -17,3 +17,4 @@ data/citywide/mappluto_lots.sqlite-shm
 
 # citywide demand SQLite (served from data/, not git)
 data/citywide/annual_demand_citywide/*.sqlite*
+__pycache__/

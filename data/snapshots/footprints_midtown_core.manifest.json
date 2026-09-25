@@ -1,5 +1,5 @@
 {
-  "captured_utc": "2026-09-25T07:05:20Z",
+  "captured_utc": "2026-09-25T13:09:17Z",
   "dataset": "5zhs-2jue (BUILDING footprints)",
   "resource": "https://data.cityofnewyork.us/resource/5zhs-2jue.json",
   "query_where": "within_box(the_geom, 40.765, -73.988, 40.748, -73.970)",
@@ -16,6 +16,6 @@
     "feature_code"
   ],
   "rows": 1817,
-  "sha256": "b3740ad9d408279d9b63095f499633a40c0bdadbac96e769ba6ca971eeda3df7",
+  "sha256": "dd7384035c23edb37f5630b49a26676a2b5ee0fddcca2d107715ac58c13e48ef",
   "raw_file": "/mnt/e/OC_Projects/projects/signalnyc/data/snapshots/footprints_midtown_core.raw.json"
 }

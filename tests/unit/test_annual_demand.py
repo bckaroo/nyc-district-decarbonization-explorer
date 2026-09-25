@@ -49,17 +49,63 @@ def test_office_gas_split_exact():
 
 
 def test_office_elec_cooling_exact():
-    """office elec 1000 kWh -> cooling delivered = kWh*share*3.412*COP."""
+    """office elec (ALREADY kBtu) -> cooling delivered = kBtu*share*COP.
+
+    Regression guard for the 3.412x inflation: the LL84 unsuffixed
+    electricity column is kBtu, not kWh. Treating it as kWh multiplied every
+    cooling estimate by 3.412 and made the net-thermal layer read all-blue.
+    """
     lu = make_landuse("1001260071", "05")
     props = {"bbl": "1001260071", "site_eui_kbtu_ft": None,
              "property_gfa_self_reported": None,
              "natural_gas_use_kbtu": None,
              "electricity_use_grid_purchase": 1000.0}
     out = m.model_one(props, lu)
-    expected = 1000 * PARAMS["elec_split_by_archetype"]["office"]["cooling"] * 3.412 * m.COP
+    expected = 1000 * PARAMS["elec_split_by_archetype"]["office"]["cooling"] * m.COP
     assert math.isclose(out["cooling_kbtu"], expected, abs_tol=0.05)
+    # Explicitly NOT the old kWh-path number.
+    assert not math.isclose(out["cooling_kbtu"], expected * 3.412, abs_tol=0.05)
     # no gas, no EUI -> heating is null, not archetype prior (v1 rule)
     assert out["space_heating_kbtu"] is None
+
+
+def test_district_steam_counts_toward_heating():
+    """Steam-served buildings must register heating.
+
+    Omitting district steam was the other half of the all-blue bug: Midtown
+    is heavily steam-served, so gas-only heating looked near zero there.
+    """
+    lu = make_landuse("1000010025", "05")
+    props = {"bbl": "1000010025", "site_eui_kbtu_ft": None,
+             "property_gfa_self_reported": None,
+             "natural_gas_use_kbtu": None,
+             "electricity_use_grid_purchase": None,
+             "district_steam_use_kbtu": 10000.0}
+    out = m.model_one(props, lu)
+    assert math.isclose(out["space_heating_kbtu"], 10000.0 * 0.90 * m.ETA, rel_tol=1e-6)
+    assert math.isclose(out["dhw_kbtu"], 10000.0 * 0.10 * m.ETA, rel_tol=1e-6)
+    assert out["cooling_kbtu"] is None
+
+
+def test_fuel_oil_counts_toward_heating():
+    lu = make_landuse("1000010025", "05")
+    props = {"bbl": "1000010025", "natural_gas_use_kbtu": None,
+             "electricity_use_grid_purchase": None,
+             "fuel_oil_2_use_kbtu": 5000.0}
+    out = m.model_one(props, lu)
+    gs = PARAMS["gas_split_by_archetype"]["office"]
+    assert math.isclose(out["space_heating_kbtu"], 5000.0 * gs["space_heating"] * m.ETA,
+                        rel_tol=1e-6)
+    assert out["space_heating_kbtu"] > 0
+
+
+def test_district_chilled_water_is_delivered_cooling():
+    """Chilled water is already delivered cooling energy - no COP multiplier."""
+    lu = make_landuse("1000010025", "05")
+    props = {"bbl": "1000010025", "electricity_use_grid_purchase": None,
+             "district_chilled_water_use": 4000.0}
+    out = m.model_one(props, lu)
+    assert math.isclose(out["cooling_kbtu"], 4000.0, rel_tol=1e-6)
 
 
 def test_zero_padded_landuse_normalized():

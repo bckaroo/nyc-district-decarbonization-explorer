@@ -36,7 +36,7 @@ from datetime import datetime, timezone
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SNAP_DIR = os.path.join(REPO, "data", "snapshots")
-LL84_SLICE = "ll84_2024_midtown_core"
+LL84_SLICE = "ll84_2024_midtown_core_v2"
 FP_SLICE = "footprints_midtown_core"
 OUT_GEOJSON = os.path.join(SNAP_DIR, "footprints_joined.geojson")
 
@@ -58,6 +58,17 @@ ENERGY_NUMERIC_FIELDS = [
     "property_gfa_self_reported",
     "natural_gas_use_kbtu",
     "electricity_use_grid_purchase",
+    # District + fossil fuels (heating-bearing energy that the first ingest
+    # omitted; without them steam-served buildings read as cooling-only).
+    "district_steam_use_kbtu",
+    "district_hot_water_use_kbtu",
+    "district_chilled_water_use",
+    "fuel_oil_1_use_kbtu",
+    "fuel_oil_2_use_kbtu",
+    "fuel_oil_4_use_kbtu",
+    "fuel_oil_5_6_use_kbtu",
+    "diesel_2_use_kbtu",
+    "propane_use_kbtu",
 ]
 ENERGY_TEXT_FIELDS = ["address_1"]
 
@@ -222,6 +233,15 @@ DISAGG_FIELDS = [
     "total_location_based_ghg",
     "natural_gas_use_kbtu",
     "electricity_use_grid_purchase",
+    "district_steam_use_kbtu",
+    "district_hot_water_use_kbtu",
+    "district_chilled_water_use",
+    "fuel_oil_1_use_kbtu",
+    "fuel_oil_2_use_kbtu",
+    "fuel_oil_4_use_kbtu",
+    "fuel_oil_5_6_use_kbtu",
+    "diesel_2_use_kbtu",
+    "propane_use_kbtu",
 ]
 
 

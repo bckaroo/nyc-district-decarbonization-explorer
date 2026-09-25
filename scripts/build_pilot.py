@@ -39,7 +39,12 @@ from signalnyc.ingest.snapshots import snapshot_dataset  # noqa: E402
 FID = "5zyy-y8am"
 DATA_YEAR = 2024
 SNAP_DIR = os.path.join(REPO, "data", "snapshots")
-SNAP_SLICE = f"ll84_{DATA_YEAR}_midtown_core"
+SNAP_SLICE = f"ll84_{DATA_YEAR}_midtown_core_v2"
+# v1 (`..._midtown_core`) selected only electricity + natural gas. That
+# omitted district steam/hot water/chilled water and the fuel oils, which
+# under-counted heating in steam-served Manhattan badly enough that the
+# net-thermal layer read as all-cooling. v1 stays on disk for the audit
+# trail; v2 is the field-complete slice the pipeline now builds from.
 PROFILE_JSON = os.path.join(REPO, "docs", "pilot-profile.json")
 PROFILE_MD = os.path.join(REPO, "docs", "pilot-profile.md")
 
@@ -68,6 +73,19 @@ FIELD_LABELS = {
     "water_use_all_water_sources": "Water Use (All Water Sources) (kgal)",
     "electricity_use_grid_purchase": "Electricity Use - Grid Purchase (kBtu)",
     "natural_gas_use_kbtu": "Natural Gas Use (kBtu)",
+    # Additional fossil/district fuels. Omitting these under-counted heating
+    # badly in steam-served Manhattan (LL84 publishes them; our first ingest
+    # did not select them). All are kBtu except *_use_therms_.
+    "district_steam_use_kbtu": "District Steam Use (kBtu)",
+    "district_hot_water_use_kbtu": "District Hot Water Use (kBtu)",
+    "district_chilled_water_use": "District Chilled Water Use (kBtu)",
+    "fuel_oil_1_use_kbtu": "Fuel Oil #1 Use (kBtu)",
+    "fuel_oil_2_use_kbtu": "Fuel Oil #2 Use (kBtu)",
+    "fuel_oil_4_use_kbtu": "Fuel Oil #4 Use (kBtu)",
+    "fuel_oil_5_6_use_kbtu": "Fuel Oil #5 & #6 Use (kBtu)",
+    "diesel_2_use_kbtu": "Diesel #2 Use (kBtu)",
+    "propane_use_kbtu": "Propane Use (kBtu)",
+    "natural_gas_use_therms_": "Natural Gas Use (therms)",
 }
 METRICS = [
     "property_gfa_self_reported",
@@ -78,6 +96,15 @@ METRICS = [
     "total_location_based_ghg",
     "electricity_use_grid_purchase",
     "natural_gas_use_kbtu",
+    "district_steam_use_kbtu",
+    "district_hot_water_use_kbtu",
+    "district_chilled_water_use",
+    "fuel_oil_1_use_kbtu",
+    "fuel_oil_2_use_kbtu",
+    "fuel_oil_4_use_kbtu",
+    "fuel_oil_5_6_use_kbtu",
+    "diesel_2_use_kbtu",
+    "propane_use_kbtu",
     "water_use_all_water_sources",
 ]
 FIELDS = ["property_id", "parent_property_id", "report_year", "year_ending",

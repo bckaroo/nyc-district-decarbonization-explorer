@@ -76,7 +76,7 @@
     "socrata_id": "5zyy-y8am"
   },
   "hashes": {
-    "raw.jsonl.sha256": "bdf65a8dbd7fc318fcde3f5f073a3ba4a11c4735fd01203e95e4bf48863e184a"
+    "raw.jsonl.sha256": "c345e5b8aee3334fbf3aa5c4dde8501504a14f76ee314773c267277737fc3d64"
   },
   "identifier_diagnostics": {
     "bbl_multi_valued_examples": [
@@ -147,6 +147,15 @@
     ]
   },
   "metric_completeness": {
+    "diesel_2_use_kbtu": {
+      "explicit_zero": 2,
+      "label": "Diesel #2 Use (kBtu)",
+      "non_null": 22,
+      "null_or_blank_or_na": 1074,
+      "pct_non_null": 2.01,
+      "total_rows": 1096,
+      "unit_note": null
+    },
     "direct_ghg_emissions_intensity": {
       "explicit_zero": 79,
       "label": "Direct GHG Emissions Intensity (kgCO2e/ft\u00b2)",
@@ -165,6 +174,33 @@
       "total_rows": 1096,
       "unit_note": "Source Socrata metadata for 5zyy-y8am names these GHG fields (Metric Tons | Metric Tons CO2e) / (kgCO2e/ft\u00b2); values are metric tons CO2e (tCO2e), commonly 'Mt CO2e spoken but NOT mega-tons'."
     },
+    "district_chilled_water_use": {
+      "explicit_zero": 0,
+      "label": "District Chilled Water Use (kBtu)",
+      "non_null": 0,
+      "null_or_blank_or_na": 1096,
+      "pct_non_null": 0.0,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "district_hot_water_use_kbtu": {
+      "explicit_zero": 0,
+      "label": "District Hot Water Use (kBtu)",
+      "non_null": 0,
+      "null_or_blank_or_na": 1096,
+      "pct_non_null": 0.0,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "district_steam_use_kbtu": {
+      "explicit_zero": 34,
+      "label": "District Steam Use (kBtu)",
+      "non_null": 484,
+      "null_or_blank_or_na": 612,
+      "pct_non_null": 44.16,
+      "total_rows": 1096,
+      "unit_note": null
+    },
     "electricity_use_grid_purchase": {
       "explicit_zero": 0,
       "label": "Electricity Use - Grid Purchase (kBtu)",
@@ -174,12 +210,57 @@
       "total_rows": 1096,
       "unit_note": null
     },
+    "fuel_oil_1_use_kbtu": {
+      "explicit_zero": 0,
+      "label": "Fuel Oil #1 Use (kBtu)",
+      "non_null": 0,
+      "null_or_blank_or_na": 1096,
+      "pct_non_null": 0.0,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "fuel_oil_2_use_kbtu": {
+      "explicit_zero": 9,
+      "label": "Fuel Oil #2 Use (kBtu)",
+      "non_null": 123,
+      "null_or_blank_or_na": 973,
+      "pct_non_null": 11.22,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "fuel_oil_4_use_kbtu": {
+      "explicit_zero": 5,
+      "label": "Fuel Oil #4 Use (kBtu)",
+      "non_null": 47,
+      "null_or_blank_or_na": 1049,
+      "pct_non_null": 4.29,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "fuel_oil_5_6_use_kbtu": {
+      "explicit_zero": 1,
+      "label": "Fuel Oil #5 & #6 Use (kBtu)",
+      "non_null": 1,
+      "null_or_blank_or_na": 1095,
+      "pct_non_null": 0.09,
+      "total_rows": 1096,
+      "unit_note": null
+    },
     "natural_gas_use_kbtu": {
       "explicit_zero": 59,
       "label": "Natural Gas Use (kBtu)",
       "non_null": 834,
       "null_or_blank_or_na": 262,
       "pct_non_null": 76.09,
+      "total_rows": 1096,
+      "unit_note": null
+    },
+    "propane_use_kbtu": {
+      "explicit_zero": 0,
+      "label": "Propane Use (kBtu)",
+      "non_null": 0,
+      "null_or_blank_or_na": 1096,
+      "pct_non_null": 0.0,
       "total_rows": 1096,
       "unit_note": null
     },
@@ -311,12 +392,21 @@
       "total_location_based_ghg",
       "electricity_use_grid_purchase",
       "natural_gas_use_kbtu",
+      "district_steam_use_kbtu",
+      "district_hot_water_use_kbtu",
+      "district_chilled_water_use",
+      "fuel_oil_1_use_kbtu",
+      "fuel_oil_2_use_kbtu",
+      "fuel_oil_4_use_kbtu",
+      "fuel_oil_5_6_use_kbtu",
+      "diesel_2_use_kbtu",
+      "propane_use_kbtu",
       "water_use_all_water_sources"
     ],
     "where": "report_year = '2024' AND latitude BETWEEN '40.748' AND '40.765' AND longitude BETWEEN '-73.988' AND '-73.970'"
   },
   "retrieval": {
-    "captured_utc": "2026-09-24T15:45:20Z",
+    "captured_utc": "2026-09-25T13:09:15Z",
     "mode": "offline",
     "raw_snapshot_immutable": true
   },

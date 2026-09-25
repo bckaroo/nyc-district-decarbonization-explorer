@@ -1,0 +1,51 @@
+{
+  "captured_utc": "2026-09-25T13:09:15Z",
+  "count_query_url": "https://data.cityofnewyork.us/resource/5zyy-y8am.json?%24select=count%28%2A%29+as+n&%24where=report_year+%3D+%272024%27+AND+latitude+BETWEEN+%2740.748%27+AND+%2740.765%27+AND+longitude+BETWEEN+%27-73.988%27+AND+%27-73.970%27",
+  "fetch_log": {
+    "pages": 1,
+    "requests": [
+      {
+        "rows": 1096,
+        "status": 200,
+        "url_sha": "/resource/5zyy-y8am.json[?]"
+      }
+    ],
+    "rows": 1096
+  },
+  "raw_file": "/mnt/e/OC_Projects/projects/signalnyc/data/snapshots/ll84_2024_midtown_core_v2.raw.jsonl",
+  "rows": 1096,
+  "selected_fields": [
+    "property_id",
+    "parent_property_id",
+    "report_year",
+    "year_ending",
+    "nyc_borough_block_and_lot",
+    "nyc_building_identification",
+    "address_1",
+    "postal_code",
+    "latitude",
+    "longitude",
+    "property_gfa_self_reported",
+    "site_eui_kbtu_ft",
+    "weather_normalized_site_eui",
+    "direct_ghg_emissions_metric",
+    "direct_ghg_emissions_intensity",
+    "total_location_based_ghg",
+    "electricity_use_grid_purchase",
+    "natural_gas_use_kbtu",
+    "district_steam_use_kbtu",
+    "district_hot_water_use_kbtu",
+    "district_chilled_water_use",
+    "fuel_oil_1_use_kbtu",
+    "fuel_oil_2_use_kbtu",
+    "fuel_oil_4_use_kbtu",
+    "fuel_oil_5_6_use_kbtu",
+    "diesel_2_use_kbtu",
+    "propane_use_kbtu",
+    "water_use_all_water_sources"
+  ],
+  "sha256": "c345e5b8aee3334fbf3aa5c4dde8501504a14f76ee314773c267277737fc3d64",
+  "slice": "ll84_2024_midtown_core_v2",
+  "socrata_id": "5zyy-y8am",
+  "where": "report_year = '2024' AND latitude BETWEEN '40.748' AND '40.765' AND longitude BETWEEN '-73.988' AND '-73.970'"
+}

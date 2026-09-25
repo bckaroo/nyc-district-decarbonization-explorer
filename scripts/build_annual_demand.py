@@ -96,15 +96,32 @@ def model_one(props: dict, landuse_map: dict) -> dict:
     gfa = num(props.get("property_gfa_self_reported"))
     eui = num(props.get("site_eui_kbtu_ft"))
     gas = num(props.get("natural_gas_use_kbtu"))
-    elec_kwh = num(props.get("electricity_use_grid_purchase"))  # LL84 field is kWh
+    # LL84 unsuffixed electricity column is ALREADY kBtu (verified against the
+    # dataset's own site_eui: kWh values would exceed site_eui, which is
+    # impossible). The earlier `* 3.412` treated it as kWh and inflated every
+    # cooling estimate 3.4x — the reason the net layer read all-blue.
+    elec_kbtu = num(props.get("electricity_use_grid_purchase"))
+    # District/fossil fuels: heating-bearing energy the first ingest omitted.
+    steam = num(props.get("district_steam_use_kbtu"))
+    dhw_district = num(props.get("district_hot_water_use_kbtu"))
+    chilled = num(props.get("district_chilled_water_use"))
+    oil = sum(
+        num(props.get(k)) or 0.0
+        for k in ("fuel_oil_1_use_kbtu", "fuel_oil_2_use_kbtu",
+                  "fuel_oil_4_use_kbtu", "fuel_oil_5_6_use_kbtu",
+                  "diesel_2_use_kbtu", "propane_use_kbtu")
+    )
     obs_gas = bool(gas and gas > 0)
-    obs_elec = bool(elec_kwh and elec_kwh > 0)
+    obs_elec = bool(elec_kbtu and elec_kbtu > 0)
+    obs_steam = bool(steam and steam > 0)
+    obs_oil = oil > 0
+    obs_district_dhw = bool(dhw_district and dhw_district > 0)
+    obs_chilled = bool(chilled and chilled > 0)
     arch = archetype_for(props, landuse_map)
 
     tier = "T4_footprint_numeric_only"
     site_est = None
-    if obs_gas or obs_elec:
-        # Any metered fuel → T1 regardless of EUI presence (fuel end-uses usable)
+    if obs_gas or obs_elec or obs_steam or obs_oil or obs_district_dhw or obs_chilled:
         tier = "T1_observed_full"
     elif eui is not None and gfa is not None:
         site_est = eui * gfa
@@ -114,18 +131,41 @@ def model_one(props: dict, landuse_map: dict) -> dict:
     es = PARAMS["elec_split_by_archetype"][arch]
 
     modeled = {}
-    if obs_gas and gas > 0:
-        modeled["space_heat"] = gas * gs["space_heating"] * ETA
-        modeled["dhw"] = gas * gs["dhw"] * ETA
-        # declared end-use shares must sum to 1.0 per archetype; no residual bucket in v1
-    elif site_est is not None:
-        # Fall back to archetype fuel split when no gas metered; assume all else equal gas-only proxy
-        modeled["space_heat"] = site_est * 0.70 * ETA
-        modeled["dhw"] = site_est * 0.30 * ETA
+    heat_input = 0.0
+    dhw_input = 0.0
+    # Gas: split into space heating vs DHW.
+    if obs_gas:
+        heat_input += gas * gs["space_heating"]
+        dhw_input += gas * gs["dhw"]
+    elif site_est is not None and not (obs_steam or obs_oil or obs_district_dhw):
+        heat_input += site_est * 0.70
+        dhw_input += site_est * 0.30
+    # District steam is space heat (+ some DHW); district hot water is DHW.
+    if obs_steam:
+        heat_input += (steam or 0.0) * 0.90
+        dhw_input += (steam or 0.0) * 0.10
+    if obs_district_dhw:
+        dhw_input += dhw_district or 0.0
+    # Fuel oil / diesel / propane serve heating and DHW; treat as heating-weighted.
+    if obs_oil:
+        heat_input += oil * gs["space_heating"]
+        dhw_input += oil * gs["dhw"]
 
-    if obs_elec and elec_kwh > 0:
-        # metered kWh → kBtu electric input (1 kWh = 3.412 kBtu); delivered cooling = input × COP
-        modeled["cooling"] = elec_kwh * es["cooling"] * 3.412 * COP
+    if heat_input > 0 or dhw_input > 0:
+        # Delivered thermal = combustion input x seasonal efficiency.
+        modeled["space_heat"] = heat_input * ETA
+        modeled["dhw"] = dhw_input * ETA
+
+    # Cooling: purchased electricity share, converted at the SAME energy basis
+    # as heating (delivered thermal), using COP for the vapour-compression step.
+    # District chilled water is already delivered cooling energy (no COP).
+    cooling_input = 0.0
+    if obs_elec:
+        cooling_input += (elec_kbtu or 0.0) * es["cooling"] * COP
+    if obs_chilled:
+        cooling_input += chilled or 0.0
+    if cooling_input > 0:
+        modeled["cooling"] = cooling_input
 
     out = {
         "space_heating_kbtu": round(modeled["space_heat"], 1) if modeled.get("space_heat") is not None else None,
@@ -195,17 +235,28 @@ def main():
             "max": round(vals[-1], 2) if vals else None,
         }
 
-    # Conservation check: per-property gas = sum of allocated end-uses is guaranteed
-    # algebraically for T1 (shares sum to 1 × η). Record observed gas sum for tier T1
-    # in the manifest for reproducible aggregate comparison (not cross-tier).
-    gas_sum_t1 = 0.0
+    # Conservation check: for T1 rows the allocated (space_heating + DHW) output
+    # must equal the sum of ALL heating-bearing fuel inputs × η. The denominator
+    # therefore has to include every heating fuel, not just natural gas — when
+    # district steam was added to the model but not to this check, implied_eta
+    # came out at 1.96 (>1.0 is physically impossible) which is how the omission
+    # was caught. District chilled water is excluded: it is cooling, not heating.
+    heat_in_t1 = 0.0
     alloc_sum_t1 = 0.0
     for fo in feats_out:
         p = fo["properties"]
         if p["evidence_tier"] == "T1_observed_full":
-            g = num(p.get("natural_gas_use_kbtu"))
-            if g and g > 0:
-                gas_sum_t1 += g
+            fuel_in = 0.0
+            for key in ("natural_gas_use_kbtu", "district_steam_use_kbtu",
+                        "district_hot_water_use_kbtu", "fuel_oil_1_use_kbtu",
+                        "fuel_oil_2_use_kbtu", "fuel_oil_4_use_kbtu",
+                        "fuel_oil_5_6_use_kbtu", "diesel_2_use_kbtu",
+                        "propane_use_kbtu"):
+                v = num(p.get(key))
+                if v and v > 0:
+                    fuel_in += v
+            if fuel_in > 0:
+                heat_in_t1 += fuel_in
                 alloc_sum_t1 += (p["space_heating_kbtu"] or 0) + (p["dhw_kbtu"] or 0)
 
     manifest = {
@@ -214,7 +265,7 @@ def main():
         "inputs": {
             "footprints_geojson": str(IN_GEOJSON.name),
             "footprints_sha256": sha256_file(IN_GEOJSON),
-            "ll84_snapshot": "data/snapshots/ll84_2024_midtown_core.raw.jsonl",
+            "ll84_snapshot": "data/snapshots/ll84_2024_midtown_core_v2.raw.jsonl",
             "mappluto_sqlite": str(IN_SQLITE.relative_to(REPO)) if IN_SQLITE.exists() else None,
             "params_sha256": sha256_file(REPO / "scripts" / "annual_demand_params.json"),
         },
@@ -226,11 +277,18 @@ def main():
         },
         "counts_by_tier": {k: tier_count[k] for k in sorted(tier_count)},
         "aggregate_conservation_check": {
-            "note": "T1 gas rows: Σ allocated (space_heating+DHW) = Σ observed_gas × (share_h+share_d=1.0) × η=0.80, i.e. exactly 0.80× observed, by algebraic construction. The 20% difference is real fuel-to-delivered-heat efficiency loss (stack/excess-air), intentionally NOT stored as an end-use bucket. Recorded as a reproducibility receipt and sanity check that shares+η were applied as parameterized; not a statistical finding.",
-            "observed_gas_kbtu_t1": round(gas_sum_t1, 1),
+            "note": "T1 rows: Σ allocated (space_heating+DHW) = Σ (all heating fuels × split × η). At η=0.80 the allocated total is exactly 0.80× the summed heating-fuel input by algebraic construction. The 20% difference is real fuel-to-delivered-heat efficiency loss (stack/excess-air), intentionally NOT stored as an end-use bucket. Denominator includes district steam, district hot water, and the fuel oils — not gas alone. Recorded as a reproducibility receipt and sanity check that shares+η were applied as parameterized; not a statistical finding.",
+            "observed_heating_fuel_kbtu_t1": round(heat_in_t1, 1),
             "allocated_heat_plus_dhw_kbtu_t1": round(alloc_sum_t1, 1),
-            "implied_eta": round(alloc_sum_t1 / gas_sum_t1, 4) if gas_sum_t1 else None,
-            "as_expected": abs((alloc_sum_t1 / gas_sum_t1) - ETA) < 0.001 if gas_sum_t1 else False,
+            "implied_eta": round(alloc_sum_t1 / heat_in_t1, 4) if heat_in_t1 else None,
+            # Physical invariant: delivered heat can never exceed fuel input, so
+            # implied_eta must land at the parameterized η (0.80) and must never
+            # exceed 1.0. The >1.0 case is what exposed the steam omission.
+            "as_expected": (
+                heat_in_t1 > 0
+                and abs((alloc_sum_t1 / heat_in_t1) - ETA) < 0.001
+                and (alloc_sum_t1 / heat_in_t1) <= 1.0
+            ),
         },
         "null_counts": {"heating": null_heating, "cooling": null_cooling},
         "intensity_distributions_kbtu_ft2_yr": meds,

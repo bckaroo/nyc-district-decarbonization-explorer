@@ -6,14 +6,14 @@
 - Dataset: NYC Building Energy and Water Data Disclosure for Local Law 84 2023 to Present (Data for Calendar Year 2022-Present)
 - Bbox: Midtown Core, Manhattan: lat [40.748, 40.765], lon [-73.988, -73.970]; contiguous rectangle spanning ~Bryant Park/Grand Central/Chrysler/ESB-adjacent core.
 - Build mode: **offline**; raw snapshot is immutable and never rewritten.
-- Captured (UTC): 2026-09-24T15:45:20Z
-- SHA256 (raw.jsonl): `bdf65a8dbd7fc318fcde3f5f073a3ba4a11c4735fd01203e95e4bf48863e184a`
+- Captured (UTC): 2026-09-25T13:09:15Z
+- SHA256 (raw.jsonl): `c345e5b8aee3334fbf3aa5c4dde8501504a14f76ee314773c267277737fc3d64`
 
 ## Query
 
 ```soql
 $where: report_year = '2024' AND latitude BETWEEN '40.748' AND '40.765' AND longitude BETWEEN '-73.988' AND '-73.970'
-$fields: property_id, parent_property_id, report_year, year_ending, nyc_borough_block_and_lot, nyc_building_identification, address_1, postal_code, latitude, longitude, property_gfa_self_reported, site_eui_kbtu_ft, weather_normalized_site_eui, direct_ghg_emissions_metric, direct_ghg_emissions_intensity, total_location_based_ghg, electricity_use_grid_purchase, natural_gas_use_kbtu, water_use_all_water_sources
+$fields: property_id, parent_property_id, report_year, year_ending, nyc_borough_block_and_lot, nyc_building_identification, address_1, postal_code, latitude, longitude, property_gfa_self_reported, site_eui_kbtu_ft, weather_normalized_site_eui, direct_ghg_emissions_metric, direct_ghg_emissions_intensity, total_location_based_ghg, electricity_use_grid_purchase, natural_gas_use_kbtu, district_steam_use_kbtu, district_hot_water_use_kbtu, district_chilled_water_use, fuel_oil_1_use_kbtu, fuel_oil_2_use_kbtu, fuel_oil_4_use_kbtu, fuel_oil_5_6_use_kbtu, diesel_2_use_kbtu, propane_use_kbtu, water_use_all_water_sources
 $limit: 10000 (pagination: offset-page loop, count(*)-reconciled)
 ```
 
@@ -84,6 +84,15 @@ Missing parent IDs (referenced but absent from cohort) — full list:
 | total_location_based_ghg | Total (Location-Based) GHG Emissions (Metric Tons CO2e) | 1096 | 1007 | 89 | 0 | 91.88% |
 | electricity_use_grid_purchase | Electricity Use - Grid Purchase (kBtu) | 1096 | 1021 | 75 | 0 | 93.16% |
 | natural_gas_use_kbtu | Natural Gas Use (kBtu) | 1096 | 834 | 262 | 59 | 76.09% |
+| district_steam_use_kbtu | District Steam Use (kBtu) | 1096 | 484 | 612 | 34 | 44.16% |
+| district_hot_water_use_kbtu | District Hot Water Use (kBtu) | 1096 | 0 | 1096 | 0 | 0.0% |
+| district_chilled_water_use | District Chilled Water Use (kBtu) | 1096 | 0 | 1096 | 0 | 0.0% |
+| fuel_oil_1_use_kbtu | Fuel Oil #1 Use (kBtu) | 1096 | 0 | 1096 | 0 | 0.0% |
+| fuel_oil_2_use_kbtu | Fuel Oil #2 Use (kBtu) | 1096 | 123 | 973 | 9 | 11.22% |
+| fuel_oil_4_use_kbtu | Fuel Oil #4 Use (kBtu) | 1096 | 47 | 1049 | 5 | 4.29% |
+| fuel_oil_5_6_use_kbtu | Fuel Oil #5 & #6 Use (kBtu) | 1096 | 1 | 1095 | 1 | 0.09% |
+| diesel_2_use_kbtu | Diesel #2 Use (kBtu) | 1096 | 22 | 1074 | 2 | 2.01% |
+| propane_use_kbtu | Propane Use (kBtu) | 1096 | 0 | 1096 | 0 | 0.0% |
 | water_use_all_water_sources | Water Use (All Water Sources) (kgal) | 1096 | 645 | 451 | 1 | 58.85% |
 
 ## Campus budget boundary
@@ -96,8 +105,8 @@ Missing parent IDs (referenced but absent from cohort) — full list:
 
 ## Snapshot files
 
-- `ll84_2024_midtown_core` raw snapshot: `data/snapshots/ll84_2024_midtown_core.raw.jsonl` (immutable)
-- Manifest: `data/snapshots/ll84_2024_midtown_core.manifest.json`
+- `ll84_2024_midtown_core_v2` raw snapshot: `data/snapshots/ll84_2024_midtown_core_v2.raw.jsonl` (immutable)
+- Manifest: `data/snapshots/ll84_2024_midtown_core_v2.manifest.json`
 
 ## Reproduction
 
