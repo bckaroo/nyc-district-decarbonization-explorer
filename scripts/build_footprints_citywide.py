@@ -47,7 +47,7 @@ DEMAND = REPO / "data" / "citywide" / "annual_demand_citywide" / "annual_demand_
 # on /mnt/e decelerated from 5k rows/s to under 1k rows/s and would have taken
 # hours; staging natively is minutes. The repo copy is the deliverable.
 SCRATCH = Path(
-    os.environ.get("SIGNALNYC_SCRATCH", "/home/abuck/.hermes/cache/scratch/signalnyc_build")
+    os.environ.get("NYCDECO_SCRATCH") or os.environ.get("SIGNALNYC_SCRATCH", "/home/abuck/.hermes/cache/scratch/signalnyc_build")
 )
 STAGE = SCRATCH / "footprints_citywide.sqlite"
 

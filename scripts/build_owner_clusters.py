@@ -41,7 +41,7 @@ MIN_BLDG_SQFT = 100_000
 # manifest sha256 that does not match the file beside it). Two runs did exactly
 # that; one wrote an empty 45-byte file. The lock makes a second run refuse.
 LOCK = Path(
-    os.environ.get("SIGNALNYC_SCRATCH", "/home/abuck/.hermes/cache/scratch/signalnyc_build")
+    os.environ.get("NYCDECO_SCRATCH") or os.environ.get("SIGNALNYC_SCRATCH", "/home/abuck/.hermes/cache/scratch/signalnyc_build")
 ) / "build_owner_clusters.lock"
 
 

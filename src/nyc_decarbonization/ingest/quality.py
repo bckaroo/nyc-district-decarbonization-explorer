@@ -18,8 +18,8 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Mapping
 
-from signalnyc.data.identifiers import parse_bbl, parse_bbl_multi, parse_bin
-from signalnyc.data.observations import _to_num
+from nyc_decarbonization.data.identifiers import parse_bbl, parse_bbl_multi, parse_bin
+from nyc_decarbonization.data.observations import _to_num
 
 
 def distinct_counts(rows: Iterable[Mapping]) -> dict:
@@ -51,7 +51,7 @@ def distinct_counts(rows: Iterable[Mapping]) -> dict:
 
 def campus_accounting(rows: Iterable[Mapping], *, coverage_evidence=None) -> dict:
     """Use the same conservative reporting-boundary rules as all other totals."""
-    from signalnyc.data.observations import campus_report_boundary
+    from nyc_decarbonization.data.observations import campus_report_boundary
     rows = list(rows)
     result = campus_report_boundary(
         [dict(r, total_ghg=r.get("total_location_based_ghg")) for r in rows],

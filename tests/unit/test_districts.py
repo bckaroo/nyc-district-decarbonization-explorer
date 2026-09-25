@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from signalnyc.api import districts as D
+from nyc_decarbonization.api import districts as D
 
 
 def _poly(x, y, d=0.001):

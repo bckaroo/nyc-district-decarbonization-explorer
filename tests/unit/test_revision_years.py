@@ -1,5 +1,5 @@
 """Synthetic regression: revision grouping must retain each energy year."""
-from signalnyc.data.observations import revision_dedupe
+from nyc_decarbonization.data.observations import revision_dedupe
 
 
 def test_property_key_always_includes_year():

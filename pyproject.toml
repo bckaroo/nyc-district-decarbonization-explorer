@@ -1,7 +1,7 @@
 [project]
-name = "signalnyc"
+name = "nyc-decarbonization"
 version = "0.1.0"
-description = "NYC building energy screening - feasibility and ingestion foundation"
+description = "NYC District Decarbonization Explorer — NYC building energy screening, LL84 observed + modeled annual demand"
 requires-python = ">=3.11"
 dependencies = []
 

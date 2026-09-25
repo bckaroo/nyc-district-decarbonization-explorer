@@ -10,7 +10,7 @@ from __future__ import annotations
 import os, sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "src"))
-from signalnyc.ingest.snapshots import snapshot_dataset
+from nyc_decarbonization.ingest.snapshots import snapshot_dataset
 
 FID = "5zyy-y8am"
 WHERE = "report_year = '2024'"

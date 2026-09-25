@@ -109,7 +109,7 @@ OUT_MANIFEST = OUT_DIR / "manifest.json"
 # are ~20x slower on the /mnt/* Windows mounts (measured 11.3 vs 220 MB/s for
 # 4K fsync), which turns a minutes-long build into hours.
 SCRATCH = Path(
-    os.environ.get("SIGNALNYC_SCRATCH", "/home/abuck/.hermes/cache/scratch/signalnyc_build")
+    os.environ.get("NYCDECO_SCRATCH") or os.environ.get("SIGNALNYC_SCRATCH", "/home/abuck/.hermes/cache/scratch/signalnyc_build")
 )
 STAGE_SQLITE = SCRATCH / "annual_demand_citywide.sqlite"
 

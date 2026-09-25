@@ -10,11 +10,11 @@ bounded fetch (writes a new manifest with a new captured_utc).
 Profile semantics (verified):
 - field unit for GHG is Metric Tons CO2e (from Socrata source metadata for
   dataset 5zyy-y8am), NOT mega-tons;
-- "distinct" identifier counts follow signalnyc.ingest.quality.distinct_counts:
+- "distinct" identifier counts follow nyc_decarbonization.ingest.quality.distinct_counts:
   BBLs are a UNION of all canonical tokens per row (semicolon/dot/space
   separated), BINs are parsed per 7-digit token without zero-stripping;
 - campus parent/child/standalone classification comes from
-  signalnyc.ingest.campus_accounting (self-parents count as parents, not
+  nyc_decarbonization.ingest.campus_accounting (self-parents count as parents, not
   children) and all sums are kept DIAGNOSTIC, never a verified total, because
   the campus coverage boundary is unresolved.
 
@@ -33,8 +33,8 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "src"))
 
-from signalnyc.ingest.quality import campus_accounting, distinct_counts  # noqa: E402
-from signalnyc.ingest.snapshots import snapshot_dataset  # noqa: E402
+from nyc_decarbonization.ingest.quality import campus_accounting, distinct_counts  # noqa: E402
+from nyc_decarbonization.ingest.snapshots import snapshot_dataset  # noqa: E402
 
 FID = "5zyy-y8am"
 DATA_YEAR = 2024
@@ -178,14 +178,14 @@ def build_profile(rows: list[dict], *, where: str = WHERE, count_query_url: str 
     for r in rows:
         raw = r.get("nyc_borough_block_and_lot")
         mb = r  # keep raw diagnostics minimal below
-        from signalnyc.data.identifiers import parse_bbl_multi
+        from nyc_decarbonization.data.identifiers import parse_bbl_multi
         toks = parse_bbl_multi(raw)
         if len(toks) > 1:
             bbl_multi.append(r)
         elif not toks and str(raw or "").strip():
             bbl_unparsed.append(r)
 
-    from signalnyc.data.identifiers import parse_bin
+    from nyc_decarbonization.data.identifiers import parse_bin
     bin_multi = []
     for r in rows:
         toks = [t for t in str(r.get("nyc_building_identification") or "").split(";")]
@@ -285,7 +285,7 @@ def build_profile(rows: list[dict], *, where: str = WHERE, count_query_url: str 
             "child_property_count": child_property_count,
             "standalone_count": ca["standalone_count"],
             "classification_note": (
-                "Via signalnyc.ingest.quality.campus_accounting: records whose "
+                "Via nyc_decarbonization.ingest.quality.campus_accounting: records whose "
                 "parent_property_id equals their own property_id are classified as "
                 "parents (not children); check adds to rows."),
             "orphan_child_count": len(orphans),
@@ -324,7 +324,7 @@ def main(argv: list[str] | None = None) -> None:
 
     count_query_url = name = None
     if args.online:
-        from signalnyc.ingest.snapshots import snapshot_dataset as _sd  # noqa: F401
+        from nyc_decarbonization.ingest.snapshots import snapshot_dataset as _sd  # noqa: F401
     if args.online:
         snapshot = snapshot_dataset(SNAP_DIR, FID, WHERE, SNAP_SLICE_NAME,
                                     fields=FIELDS, page_size=10_000)

@@ -7,7 +7,7 @@ import sqlite3
 
 import pytest
 
-from signalnyc.api.citywide_footprints import (
+from nyc_decarbonization.api.citywide_footprints import (
     ENERGY_COLUMNS,
     MODELED_COLUMNS,
     FootprintStore,

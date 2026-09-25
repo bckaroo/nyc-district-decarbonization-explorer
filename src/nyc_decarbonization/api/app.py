@@ -47,12 +47,24 @@ def create_app(
     manifest_path: Path | None = None,
     web_dist: Path | None = None,
 ) -> FastAPI:
-    raw_path = Path(raw_path or os.environ.get("SIGNALNYC_SNAPSHOT", DEFAULT_RAW))
+    raw_path = Path(
+        raw_path
+        or os.environ.get("NYCDECO_SNAPSHOT")
+        or os.environ.get("SIGNALNYC_SNAPSHOT")
+        or DEFAULT_RAW
+    )
     manifest_path = Path(
         manifest_path
-        or os.environ.get("SIGNALNYC_MANIFEST", str(_default_manifest_for(raw_path)))
+        or os.environ.get("NYCDECO_MANIFEST")
+        or os.environ.get("SIGNALNYC_MANIFEST")
+        or str(_default_manifest_for(raw_path))
     )
-    web_dist = Path(web_dist or os.environ.get("SIGNALNYC_WEB_DIST", DEFAULT_WEB))
+    web_dist = Path(
+        web_dist
+        or os.environ.get("NYCDECO_WEB_DIST")
+        or os.environ.get("SIGNALNYC_WEB_DIST")
+        or DEFAULT_WEB
+    )
 
     store = SnapshotStore(raw_path, manifest_path)
     row_by: dict[str, str] = {}
@@ -429,7 +441,8 @@ def create_app(
     # (space_heating/dhw/cooling + _ft2_yr + evidence_tier). Falls back to the
     # bare observed snapshot when the merged file hasn't been generated yet.
     _footprints_path = Path(
-        os.environ.get(
+        os.environ.get("NYCDECO_FOOTPRINTS")
+        or os.environ.get(
             "SIGNALNYC_FOOTPRINTS",
             str(Path(DEFAULT_RAW).parent / "footprints_joined_demand.geojson"),
         )

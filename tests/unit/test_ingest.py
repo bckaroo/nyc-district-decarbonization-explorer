@@ -7,8 +7,8 @@ import json
 import urllib.parse
 import pytest
 
-from signalnyc.ingest import quality, snapshots, socrata
-from signalnyc.data.observations import campus_report_boundary
+from nyc_decarbonization.ingest import quality, snapshots, socrata
+from nyc_decarbonization.data.observations import campus_report_boundary
 
 
 # Source-shaped standalone/parent examples; child and orphan are synthetic.

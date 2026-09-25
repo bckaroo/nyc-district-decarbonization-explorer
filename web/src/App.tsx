@@ -206,8 +206,12 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div className="header-top">
-          <h1>Signal<span className="accent">NYC</span></h1>
-          <span className="subtitle">LL84 Midtown Core · CY2024 pilot explorer</span>
+          <h1>
+            NYC <span className="accent">District Decarbonization</span> Explorer
+          </h1>
+          <span className="subtitle">
+            Citywide · LL84 CY2024 observed + modeled annual demand
+          </span>
         </div>
         <p className="disclaimer">
           Preliminary explorer — annual observed data. One point = one reporting property

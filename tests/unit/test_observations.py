@@ -1,7 +1,7 @@
 """Unit tests: observation helpers — revision selection, null-vs-zero, boundaries."""
 import pytest
 
-from signalnyc.data.observations import (
+from nyc_decarbonization.data.observations import (
     revision_dedupe,
     null_vs_zero,
     campus_report_boundary,

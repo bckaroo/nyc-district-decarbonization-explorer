@@ -1,6 +1,6 @@
 """Synthetic regression fixtures: not measurements or real coverage evidence."""
 import pytest
-from signalnyc.data.observations import campus_report_boundary
+from nyc_decarbonization.data.observations import campus_report_boundary
 
 
 def test_linkage_alone_does_not_prove_coverage():

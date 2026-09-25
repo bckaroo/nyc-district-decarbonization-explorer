@@ -48,7 +48,7 @@ Note: row count ≠ distinct property count by design — campuses and multi-BBL
 | Missing parent IDs | 8 |
 
 
-Classification note: Via signalnyc.ingest.quality.campus_accounting: records whose parent_property_id equals their own property_id are classified as parents (not children); check adds to rows.
+Classification note: Via nyc_decarbonization.ingest.quality.campus_accounting: records whose parent_property_id equals their own property_id are classified as parents (not children); check adds to rows.
 
 Orphan children (child points at parent not in cohort):
 - child `2649545` → parent `26708346`

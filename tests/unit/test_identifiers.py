@@ -1,7 +1,7 @@
 """Unit tests for identifier parsing (multi-valued, malformed, null vs zero)."""
 import pytest
 
-from signalnyc.data.identifiers import boro_code, parse_bbl, parse_bbl_multi, parse_bin
+from nyc_decarbonization.data.identifiers import boro_code, parse_bbl, parse_bbl_multi, parse_bin
 
 
 class TestBBL:

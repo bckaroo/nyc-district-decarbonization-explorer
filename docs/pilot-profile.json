@@ -312,7 +312,7 @@
   },
   "parent_child_flags": {
     "child_property_count": 89,
-    "classification_note": "Via signalnyc.ingest.quality.campus_accounting: records whose parent_property_id equals their own property_id are classified as parents (not children); check adds to rows.",
+    "classification_note": "Via nyc_decarbonization.ingest.quality.campus_accounting: records whose parent_property_id equals their own property_id are classified as parents (not children); check adds to rows.",
     "missing_parent_ids": [
       "15667692",
       "22164271",

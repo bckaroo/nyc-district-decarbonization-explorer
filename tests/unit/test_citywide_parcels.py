@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from signalnyc.api.citywide_parcels import (
+from nyc_decarbonization.api.citywide_parcels import (
     FIELD_AVAILABILITY,
     LL84_FIELDS,
     ParcelStore,

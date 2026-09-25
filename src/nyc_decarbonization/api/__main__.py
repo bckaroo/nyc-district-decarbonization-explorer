@@ -1,4 +1,4 @@
-"""CLI entrypoint: python -m signalnyc.api --port 3320"""
+"""CLI entrypoint: python -m nyc_decarbonization.api --port 3320"""
 
 from __future__ import annotations
 

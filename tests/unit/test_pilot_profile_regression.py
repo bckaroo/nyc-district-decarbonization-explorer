@@ -98,7 +98,7 @@ def test_snapshot_integrity_sodgita_tamper_detected(tmp_path):
 
 def test_distinct_bbl_counts_union_of_tokens(rows, profile):
     """Bug regression: count must use parse_bbl_multi union, not first token."""
-    from signalnyc.data.identifiers import parse_bbl_multi
+    from nyc_decarbonization.data.identifiers import parse_bbl_multi
     bbls: set[str] = set()
     for r in rows:
         bbls.update(parse_bbl_multi(r.get("nyc_borough_block_and_lot")))
@@ -107,7 +107,7 @@ def test_distinct_bbl_counts_union_of_tokens(rows, profile):
 
 def test_distinct_bin_counts_per_token_without_zero_strip(rows, profile):
     """Bug regression: multi-BIN tokens all count; zeros are never stripped."""
-    from signalnyc.data.identifiers import parse_bin
+    from nyc_decarbonization.data.identifiers import parse_bin
     import re
     bins: set[str] = set()
     for r in rows:
@@ -129,7 +129,7 @@ def test_rows_equal_distinct_properties_is_computed_not_hardcoded(rows, profile)
 def test_raw_rows_passed_to_boundary_yield_zero_diagnostic(rows):
     """Bug regression: boundary without total* keys sums to 0; the profile must
     inject the reviewed-good total via campus_accounting instead."""
-    from signalnyc.data.observations import campus_report_boundary
+    from nyc_decarbonization.data.observations import campus_report_boundary
     naive = campus_report_boundary(rows)
     assert naive["total_ghg_top_level"] == 0.0  # the failure mode to avoid
 
@@ -165,7 +165,7 @@ def test_false_upper_bound_label_removed(profile):
 
 def test_self_parents_classified_as_parents_not_children(rows):
     """Bug regression: self_parent rows count as parents; never children."""
-    from signalnyc.data.observations import campus_report_boundary
+    from nyc_decarbonization.data.observations import campus_report_boundary
     bounded = campus_report_boundary(
         [dict(r, total_ghg=r.get("total_location_based_ghg")) for r in rows]
     )
