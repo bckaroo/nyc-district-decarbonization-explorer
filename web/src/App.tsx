@@ -12,6 +12,15 @@ import {
 import MapPanel, { DEFAULT_THEME_ID } from "./MapPanel";
 import Charts, { type FootFeature } from "./charts";
 import { getTheme, OBSERVED_THEMES } from "./symbology";
+import {
+  buildingByBbl,
+  geomBbox,
+  isStaticMode,
+  loadDistricts as loadStaticDistricts,
+  loadNetThermal,
+  loadTable,
+  staticModeSync,
+} from "./staticData";
 import "./app.css";
 
 type SortKey =
@@ -71,6 +80,15 @@ export default function App() {
   // the same row is clicked twice.
   const [rowFocus, setRowFocus] = useState<{ id: string; n: number } | null>(null);
   const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
+  // True on the GitHub Pages build (no backend). Drives the data source choice
+  // and a visible notice so a visitor is never misled about which build this is.
+  const [staticBuild, setStaticBuild] = useState(false);
+
+  // Detect the static (GitHub Pages) build before any data load, so the loaders
+  // know whether to hit the API or the baked JSON.
+  useEffect(() => {
+    isStaticMode().then((yes) => setStaticBuild(yes));
+  }, []);
 
   useEffect(() => {
     api.snapshot().then(setSnapshot).catch(() => setSnapshot(null));
@@ -81,6 +99,39 @@ export default function App() {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    // Static build: filter the baked table client-side with the same predicate
+    // the API applies, so the table behaves identically without a backend.
+    if (staticModeSync()) {
+      loadTable()
+        .then((t) => {
+          if (cancelled) return;
+          let list = (t.properties ?? []) as PropertySummary[];
+          if (query.trim()) {
+            const q = query.trim().toLowerCase();
+            list = list.filter((p) =>
+              (p.address_1 ?? "").toLowerCase().includes(q) ||
+              (p.bbl ?? "").includes(q) ||
+              (p.bin ?? "").includes(q),
+            );
+          }
+          if (missingField) {
+            list = list.filter((p) =>
+              (p.missing_fields ?? []).includes(missingField),
+            );
+          }
+          setRows(list);
+          setTotal(list.length);
+          setLoading(false);
+        })
+        .catch((e: Error) => {
+          if (cancelled) return;
+          setError(e.message);
+          setLoading(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
     api
       .search({ q: query, missing_field: missingField, limit: 400 })
       .then((res) => {
@@ -132,8 +183,17 @@ export default function App() {
         setRowFocus(null);
       })
       .catch((err: unknown) => {
-        console.error("[app] building fetch failed:", err);
-        setBuilding(null);
+        // The static Pages build has no backend. Same payload shape, so the
+        // dossier renders identically; only the source differs.
+        return buildingByBbl(bbl).then((d) => {
+          if (d) {
+            setBuilding(d as BuildingDetail);
+            setRowFocus(null);
+          } else {
+            console.error("[app] building fetch failed:", err);
+            setBuilding(null);
+          }
+        });
       });
   }
 
@@ -197,8 +257,45 @@ export default function App() {
           })
       )
       .catch((err: unknown) => {
-        console.error("[app] district fetch failed:", err);
-        setDistrict(null);
+        // Static build: summarize the district from the baked layers instead of
+        // a per-district endpoint. Same shape, so the rail is unchanged.
+        if (!staticModeSync()) {
+          console.error("[app] district fetch failed:", err);
+          setDistrict(null);
+          return;
+        }
+        loadStaticDistricts()
+          .then(async (fc) => {
+            const feat = fc.features.find(
+              (f) =>
+                (f.properties as Record<string, unknown>)?.district_id === districtId ||
+                (f.properties as Record<string, unknown>)?.id === districtId,
+            );
+            if (!feat) {
+              setDistrict(null);
+              return;
+            }
+            const props = (feat.properties ?? {}) as Record<string, unknown>;
+            const box = geomBbox(feat.geometry as never);
+            const thermal = await loadNetThermal();
+            const inBox = box
+              ? thermal.features.filter((f) => {
+                  const b = geomBbox(f.geometry as never);
+                  return (
+                    b && !(b[0] > box[2] || b[2] < box[0] || b[1] > box[3] || b[3] < box[1])
+                  );
+                })
+              : [];
+            setDistrict({
+              properties: props,
+              footprints: inBox.slice(0, 12000) as unknown as FootFeature[],
+              footprintsInBbox: inBox.length,
+              // The static count is bounding-box based, exactly like the API's,
+              // and says so rather than implying polygon containment.
+              basis: "bounding_box",
+            });
+          })
+          .catch(() => setDistrict(null));
       });
   }
 
@@ -218,6 +315,18 @@ export default function App() {
           (may be a campus). Property-level reporting; not a building-level, compliance,
           savings, or LL97 assessment.
         </p>
+        {staticBuild && (
+          <p
+            className="disclaimer static-notice"
+            data-testid="static-notice"
+          >
+            <strong>Static demo build.</strong> This GitHub Pages copy has no
+            server, so it shows every footprint with a modeled net-thermal value
+            (41,161) plus all 273 study boundaries, rather than the full
+            1,083,047-footprint citywide layer. Values, caveats, and the
+            modeled-vs-measured distinction are identical to the live app.
+          </p>
+        )}
         {snapshot && counters && (
           <div className="chips">
             <span className="chip accent"><b>{fmtInt(snapshot.rows)}</b> properties</span>

@@ -13,6 +13,11 @@ import {
   type ThemeDef,
 } from "./symbology";
 import type { FootFeature } from "./charts";
+import {
+  staticModeSync,
+  loadDistricts as loadStaticDistricts,
+  netThermalInBbox,
+} from "./staticData";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 export const DEFAULT_THEME_ID = "site_eui_kbtu_ft";
@@ -371,8 +376,23 @@ export default function MapPanel({
           max_y: String(b[1][1]),
           limit: "12000",
         });
-        fetch(`/api/footprints/bbox?${qs.toString()}`)
-          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        // Live API first; the static Pages build has no backend, so fall back to
+        // the baked layer. Same response shape either way, so the code below is
+        // unchanged. Nulls are preserved in both paths.
+        const bboxUrl = `/api/footprints/bbox?${qs.toString()}`;
+        const load = staticModeSync()
+          ? netThermalInBbox(b[0][0], b[0][1], b[1][0], b[1][1], 12000).then(
+              (r) => ({
+                bbox: [b[0][0], b[0][1], b[1][0], b[1][1]],
+                features: r.features as FootFeature[],
+                matched: r.matched,
+                truncated: r.matched > r.features.length,
+              }),
+            )
+          : fetch(bboxUrl).then((r) =>
+              r.ok ? r.json() : Promise.reject(new Error(String(r.status))),
+            );
+        load
           .then(
             (d: {
               bbox?: number[];
@@ -444,8 +464,15 @@ export default function MapPanel({
       const loadDistricts = () => {
         const map = mapRef.current;
         if (!map || !map.getLayer("district-line") || districtsLoaded) return;
-        fetch("/api/districts")
-          .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+        const dload = staticModeSync()
+          ? loadStaticDistricts().then((fc) => ({
+              features: fc.features,
+              meta: { note: "Static export: all study boundaries baked in." },
+            }))
+          : fetch("/api/districts").then((r) =>
+              r.ok ? r.json() : Promise.reject(new Error(String(r.status))),
+            );
+        dload
           .then((d: { features?: unknown[]; meta?: Record<string, unknown> }) => {
             if (cancelled) return;
             const cur = mapRef.current;

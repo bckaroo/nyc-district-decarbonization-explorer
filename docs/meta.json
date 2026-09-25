@@ -1,0 +1,10 @@
+{
+  "static_export": true,
+  "counts": {
+    "districts": 273,
+    "net_thermal_footprints": 41161,
+    "buildings": 23698,
+    "ll84_table_rows": 1096
+  },
+  "note": "Static GitHub Pages export. The full citywide layer (1,083,047 footprints) is served by the live API; this build shows every footprint with a modeled net-thermal value plus all study boundaries. Modeled values are modeled, not measured."
+}

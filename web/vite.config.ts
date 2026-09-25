@@ -4,7 +4,11 @@ import { cpSync, mkdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 // https://vite.dev/config/
+// `base` must match the deployment path or every asset 404s: GitHub Pages serves
+// this app from /<repo>/, while the tailnet server serves it from /. Set
+// VITE_BASE=/nyc-district-decarbonization-explorer/ for the Pages build.
 export default defineConfig({
+  base: process.env.VITE_BASE || '/',
   plugins: [
     react(),
     // maplibre-gl expects its worker at <bundle>/maplibre-gl-worker.mjs; Vite
