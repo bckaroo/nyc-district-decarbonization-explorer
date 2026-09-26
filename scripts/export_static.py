@@ -281,6 +281,18 @@ def main() -> int:
         print("  WARN districts_portfolio not baked; run build_districts_summary.py",
               file=sys.stderr)
 
+    # LL97 Article 320 screening (the analysis tab), baked verbatim.
+    ll97_path = Path(
+        "/mnt/e/OC_Projects/projects/signalnyc/data/citywide/ll97_compliance.json"
+    )
+    if ll97_path.exists():
+        (out / "ll97_compliance.json").write_text(ll97_path.read_text())
+        n97 = len(json.loads(ll97_path.read_text())["properties"])
+        print(f"  ll97_compliance: {n97} properties")
+    else:
+        print("  WARN ll97_compliance not baked; run build_ll97_compliance.py",
+              file=sys.stderr)
+
     (out / "meta.json").write_text(json.dumps({
         "static_export": True,
         "counts": {

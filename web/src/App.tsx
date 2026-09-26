@@ -28,6 +28,12 @@ import {
   fetchDistrictsPortfolio,
 } from "./districtsTable";
 import { loadDistrictsPortfolio as loadStaticDistrictsPortfolio } from "./staticData";
+import { loadLl97 as loadStaticLl97 } from "./staticData";
+import {
+  type Ll97Row,
+  fetchLl97,
+} from "./ll97Table";
+import { Ll97Pane } from "./Ll97Pane";
 
 type SortKey =
   | "address_1"
@@ -106,9 +112,12 @@ export default function App() {
   // Collapsing the table lets the map take the full work area.
   const [tableHidden, setTableHidden] = useState(false);
   // Table tabs: LL84 properties vs. study-district portfolios (BIDs/campuses).
-  const [tableTab, setTableTab] = useState<"properties" | "districts">("properties");
+  const [tableTab, setTableTab] = useState<"properties" | "districts" | "ll97">("properties");
   const [districtRows, setDistrictRows] = useState<DistrictPortfolioRow[] | null>(null);
   const [districtRowsErr, setDistrictRowsErr] = useState<string | null>(null);
+  // LL97 tab state: one row per property + a selected property's pathway chart.
+  const [ll97Rows, setLl97Rows] = useState<Ll97Row[] | null>(null);
+  const [ll97Err, setLl97Err] = useState<string | null>(null);
   // Set when a map click resolves to a building, so the table can scroll its row
   // into view and flash it. Changing the value re-triggers the effect even when
   // the same row is clicked twice.
@@ -186,6 +195,31 @@ export default function App() {
       cancelled = true;
     };
   }, [query, missingField]);
+
+  // LL97 rows load on demand (tab switch), once.
+  useEffect(() => {
+    if (tableTab !== "ll97" || ll97Rows || ll97Err) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (await staticModeReady()) {
+          const d = await loadStaticLl97();
+          if (cancelled) return;
+          setLl97Rows(d.properties as Ll97Row[]);
+        } else {
+          const d = await fetchLl97();
+          if (cancelled) return;
+          setLl97Rows(d.properties);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setLl97Err((e as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tableTab, ll97Rows, ll97Err]);
 
   // Districts portfolio rows load on demand (tab switch), once.
   const districtRowsVisible = tableTab === "districts";
@@ -501,11 +535,21 @@ export default function App() {
                 >
                   Districts &amp; Campuses
                 </button>
+                <button
+                  role="tab"
+                  aria-selected={tableTab === "ll97"}
+                  className={tableTab === "ll97" ? "tab active" : "tab"}
+                  onClick={() => setTableTab("ll97")}
+                >
+                  LL97 Compliance
+                </button>
               </div>
               <span className="pane-sub">
                 {tableTab === "properties"
                   ? "one row = one reporting property (may be a campus)"
-                  : "one row = one study district (BID or campus)"}
+                  : tableTab === "districts"
+                    ? "one row = one study district (BID or campus)"
+                    : "one row = one LL84 property; Article 320 screening"}
               </span>
             </div>
             {tableTab === "properties" ? (
@@ -559,7 +603,7 @@ export default function App() {
               </table>
               {sorted.length === 0 && !loading && <p className="empty">No matching properties.</p>}
             </div>
-            ) : (
+            ) : tableTab === "districts" ? (
             <div className="table-scroll">
               {districtRowsErr && <p className="empty">Districts load failed: {districtRowsErr}</p>}
               {!districtRows && !districtRowsErr && <p className="empty">Loading districts…</p>}
@@ -603,6 +647,11 @@ export default function App() {
                 <p className="empty">No study districts.</p>
               )}
             </div>
+            ) : (
+            <Ll97Pane
+              rows={ll97Rows}
+              err={ll97Err}
+            />
             )}
           </div>
         </div>

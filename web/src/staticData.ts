@@ -111,6 +111,16 @@ export async function loadTable(): Promise<{ total: number; properties: unknown[
   return getJson<{ total: number; properties: unknown[] }>(resolveDataUrl("ll84_table.json"));
 }
 
+/** Baked LL97 Article 320 screening rows for the analysis tab. */
+export async function loadLl97(): Promise<{
+  note: string;
+  generated: string;
+  counts: Record<string, number>;
+  properties: unknown[];
+}> {
+  return getJson(resolveDataUrl("ll97_compliance.json"));
+}
+
 /** Baked per-district portfolio aggregates for the districts table tab. */
 export async function loadDistrictsPortfolio(): Promise<{
   note: string;

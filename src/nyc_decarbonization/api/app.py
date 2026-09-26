@@ -281,6 +281,41 @@ def create_app(
             }
         return {**fc, "returned": len(fc["features"]), "meta": meta}
 
+    @app.get("/api/ll97", include_in_schema=True)
+    def api_ll97(status: str | None = None, q: str | None = None):
+        """Citywide LL97 Article 320 screening (precomputed).
+
+        Serves the LL97 compliance scorecard rows: fuel-schedule emissions vs.
+        occupancy-group limits for both compliance periods + estimated penalties
+        if consumption holds flat. `status` filters; `q` does a case-insensitive
+        name match. Payload methodology and exclusions ride in `note`.
+        """
+        path = Path(
+            "/mnt/e/OC_Projects/projects/signalnyc/data/citywide/ll97_compliance.json"
+        )
+        if not path.exists():
+            raise HTTPException(
+                status_code=503,
+                detail="ll97_compliance.json not built — run scripts/build_ll97_compliance.py",
+            )
+        data = json.loads(path.read_text())
+        rows = data["properties"]
+        if status:
+            rows = [r for r in rows if r.get("status") == status]
+        if q:
+            needle = q.lower()
+            rows = [r for r in rows
+                    if needle in (r.get("name") or "").lower()
+                    or needle in str(r.get("bbl") or "")]
+        return {
+            "note": data["note"],
+            "generated": data["generated"],
+            "coef_note": data["coef_note"],
+            "counts": {**data["counts"], "returned": len(rows)},
+            "properties": rows[:5000],
+            "truncated": len(rows) > 5000,
+        }
+
     @app.get("/api/districts_portfolio", include_in_schema=True)
     def api_districts_portfolio(kind: str | None = None):
         """Per-district portfolio aggregates for the districts table tab.

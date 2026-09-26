@@ -632,3 +632,12 @@ thead th:focus-visible { outline-offset: -2px; }
 }
 
 .dossier-mini { color: var(--faint); font-size: 0.9em; margin-left: 4px; }
+
+/* LL97 pane */
+.ll97-filters { display: flex; gap: 6px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border-soft); }
+.ll97-search { flex: 0 0 220px; background: var(--card); border: 1px solid var(--border-soft); color: var(--foreground); padding: 4px 8px; border-radius: 4px; font: inherit; font-size: 0.78rem; }
+.chip-ok { border-color: #34d399; color: #6ee7b7; }
+.chip-bad { border-color: #f87171; color: #fca5a5; }
+.chip-warn { border-color: #facc15; color: #fde047; }
+.chip-mut { border-color: var(--border-soft); color: var(--muted); }
+.ll97-pane table td { cursor: pointer; }
