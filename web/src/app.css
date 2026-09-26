@@ -342,6 +342,22 @@ tr.row-flash { animation: rowflash 1.4s ease-out; }
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
 }
 .pane-sub { font-size: 0.66rem; color: var(--faint); }
+.table-tabs { display: flex; gap: 4px; align-items: center; }
+.table-tabs .tab {
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--muted);
+  font: inherit; font-size: 0.7rem; font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+}
+.table-tabs .tab.active {
+  background: var(--panel-2);
+  color: var(--foreground);
+  border-bottom-color: transparent;
+}
+.tag.bid { border-color: #6ea8ff; color: #9ecbff; }
 .table-scroll { overflow: auto; flex: 1; }
 table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 thead th {

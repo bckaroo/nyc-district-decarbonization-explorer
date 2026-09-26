@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sqlite3
 import sys
 from pathlib import Path
@@ -214,8 +215,9 @@ def main() -> int:
     table_rows, table_total = [], 0
     try:
         import urllib.request
+        api_port = os.environ.get("EXPORT_API_PORT", "3330")
         with urllib.request.urlopen(
-            "http://127.0.0.1:{}?limit=400&offset=0", timeout=30
+            f"http://127.0.0.1:{api_port}/api/properties?limit=400&offset=0", timeout=30
         ) as resp:
             page = json.loads(resp.read())
         table_rows = list(page.get("properties") or [])
@@ -223,7 +225,7 @@ def main() -> int:
         # Page through the rest so the baked table is complete.
         while len(table_rows) < table_total:
             with urllib.request.urlopen(
-                "http://127.0.0.1:{}?"
+                f"http://127.0.0.1:{api_port}/api/properties?"
                 f"limit=400&offset={len(table_rows)}", timeout=30,
             ) as resp:
                 page = json.loads(resp.read())
@@ -237,6 +239,19 @@ def main() -> int:
     (out / "ll84_table.json").write_text(json.dumps(
         {"total": table_total or len(table_rows), "properties": table_rows}))
     print(f"  ll84_table: {len(table_rows)} rows")
+
+    # Districts portfolio aggregates: straight copy from the summary build (not
+    # recomputed here) so the static table tab cannot drift from the API's.
+    summary_path = Path(
+        "/mnt/e/OC_Projects/projects/signalnyc/data/citywide/districts_summary.json"
+    )
+    if summary_path.exists():
+        (out / "districts_portfolio.json").write_text(summary_path.read_text())
+        n_port = len(json.loads(summary_path.read_text())["districts"])
+        print(f"  districts_portfolio: {n_port} districts")
+    else:
+        print("  WARN districts_portfolio not baked; run build_districts_summary.py",
+              file=sys.stderr)
 
     (out / "meta.json").write_text(json.dumps({
         "static_export": True,

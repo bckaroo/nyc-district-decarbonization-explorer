@@ -23,6 +23,11 @@ import {
   staticModeSync,
 } from "./staticData";
 import "./app.css";
+import {
+  type DistrictPortfolioRow,
+  fetchDistrictsPortfolio,
+} from "./districtsTable";
+import { loadDistrictsPortfolio as loadStaticDistrictsPortfolio } from "./staticData";
 
 type SortKey =
   | "address_1"
@@ -76,6 +81,10 @@ export default function App() {
   } | null>(null);
   // Collapsing the table lets the map take the full work area.
   const [tableHidden, setTableHidden] = useState(false);
+  // Table tabs: LL84 properties vs. study-district portfolios (BIDs/campuses).
+  const [tableTab, setTableTab] = useState<"properties" | "districts">("properties");
+  const [districtRows, setDistrictRows] = useState<DistrictPortfolioRow[] | null>(null);
+  const [districtRowsErr, setDistrictRowsErr] = useState<string | null>(null);
   // Set when a map click resolves to a building, so the table can scroll its row
   // into view and flash it. Changing the value re-triggers the effect even when
   // the same row is clicked twice.
@@ -153,6 +162,32 @@ export default function App() {
       cancelled = true;
     };
   }, [query, missingField]);
+
+  // Districts portfolio rows load on demand (tab switch), once.
+  const districtRowsVisible = tableTab === "districts";
+  useEffect(() => {
+    if (!districtRowsVisible || districtRows || districtRowsErr) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (await staticModeReady()) {
+          const d = await loadStaticDistrictsPortfolio();
+          if (cancelled) return;
+          setDistrictRows(d.districts as DistrictPortfolioRow[]);
+        } else {
+          const d = await fetchDistrictsPortfolio();
+          if (cancelled) return;
+          setDistrictRows(d.districts);
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setDistrictRowsErr((e as Error).message);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [districtRowsVisible, districtRows, districtRowsErr]);
 
   async function selectRow(id: string) {
     setSelectedId(id);
@@ -425,11 +460,31 @@ export default function App() {
 
           <div className="table-pane" id="properties-table-pane">
             <div className="pane-head">
-              <h2>Properties</h2>
+              <div className="table-tabs" role="tablist" aria-label="Table datasets">
+                <button
+                  role="tab"
+                  aria-selected={tableTab === "properties"}
+                  className={tableTab === "properties" ? "tab active" : "tab"}
+                  onClick={() => setTableTab("properties")}
+                >
+                  Properties
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={tableTab === "districts"}
+                  className={tableTab === "districts" ? "tab active" : "tab"}
+                  onClick={() => setTableTab("districts")}
+                >
+                  Districts &amp; Campuses
+                </button>
+              </div>
               <span className="pane-sub">
-                one row = one reporting property (may be a campus)
+                {tableTab === "properties"
+                  ? "one row = one reporting property (may be a campus)"
+                  : "one row = one study district (BID or campus)"}
               </span>
             </div>
+            {tableTab === "properties" ? (
             <div className="table-scroll">
               <table>
                 <thead>
@@ -480,6 +535,51 @@ export default function App() {
               </table>
               {sorted.length === 0 && !loading && <p className="empty">No matching properties.</p>}
             </div>
+            ) : (
+            <div className="table-scroll">
+              {districtRowsErr && <p className="empty">Districts load failed: {districtRowsErr}</p>}
+              {!districtRows && !districtRowsErr && <p className="empty">Loading districts…</p>}
+              {districtRows && (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>District</th>
+                      <th>Type</th>
+                      <th className="num">Borough</th>
+                      <th className="num">Buildings</th>
+                      <th className="num">LL84 props</th>
+                      <th className="num">GFA ft²</th>
+                      <th className="num">Median EUI</th>
+                      <th className="num">Median net thermal</th>
+                      <th className="num">Heat / Cool</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {districtRows.map((d) => (
+                      <tr key={d.district_id}>
+                        <td>{d.name}</td>
+                        <td>
+                          <span className={`tag ${d.kind === "bid" ? "bid" : "campus"}`}>
+                            {d.kind === "bid" ? "BID" : "Campus"}
+                          </span>
+                        </td>
+                        <td>{d.borough ?? "—"}</td>
+                        <td className="num">{d.members.toLocaleString()}</td>
+                        <td className="num">{d.ll84_props.toLocaleString()}</td>
+                        <td className="num">{d.gfa_total == null ? "—" : d.gfa_total.toLocaleString()}</td>
+                        <td className="num">{d.site_eui_median == null ? "—" : d.site_eui_median.toFixed(1)}</td>
+                        <td className="num">{d.net_thermal_median == null ? "—" : d.net_thermal_median.toFixed(1)}</td>
+                        <td className="num">{d.heating_dominant} / {d.cooling_dominant}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+              {districtRows && districtRows.length === 0 && (
+                <p className="empty">No study districts.</p>
+              )}
+            </div>
+            )}
           </div>
         </div>
 

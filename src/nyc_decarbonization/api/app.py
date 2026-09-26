@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 
@@ -269,6 +270,31 @@ def create_app(
                 ],
             }
         return {**fc, "returned": len(fc["features"]), "meta": meta}
+
+    @app.get("/api/districts_portfolio", include_in_schema=True)
+    def api_districts_portfolio(kind: str | None = None):
+        """Per-district portfolio aggregates for the districts table tab.
+
+        One row per study district (BID or campus) with member counts and
+        footprint/LL84 aggregates. Served from the precomputed summary build
+        (scripts/build_districts_summary.py) — computing 273 point-in-polygon
+        joins per request would be absurd. Membership convention and grain
+        caveats ride along in the payload's `note`.
+        """
+        path = Path(
+            "/mnt/e/OC_Projects/projects/signalnyc/data/citywide/districts_summary.json"
+        )
+        if not path.exists():
+            raise HTTPException(
+                status_code=503,
+                detail="districts_summary.json not built — run scripts/build_districts_summary.py",
+            )
+        data = json.loads(path.read_text())
+        rows = data["districts"]
+        if kind:
+            rows = [r for r in rows if r.get("kind") == kind]
+        return {**data, "districts": rows, "returned": len(rows)}
+
 
     @app.get("/api/districts/{district_id}", include_in_schema=True)
     def api_district_detail(district_id: str):

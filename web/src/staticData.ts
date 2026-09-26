@@ -111,6 +111,15 @@ export async function loadTable(): Promise<{ total: number; properties: unknown[
   return getJson<{ total: number; properties: unknown[] }>(resolveDataUrl("ll84_table.json"));
 }
 
+/** Baked per-district portfolio aggregates for the districts table tab. */
+export async function loadDistrictsPortfolio(): Promise<{
+  note: string;
+  generated: string;
+  districts: unknown[];
+}> {
+  return getJson(resolveDataUrl("districts_portfolio.json"));
+}
+
 /** Baked export metadata (counts + scope note). */
 export async function loadMeta(): Promise<StaticMeta> {
   return getJson<StaticMeta>(resolveDataUrl("meta.json"));
