@@ -93,7 +93,7 @@ def main() -> int:
     ap.add_argument("--out", required=True, type=Path)
     ap.add_argument("--tol", type=float, default=0.00008,
                     help="boundary simplification tolerance in degrees")
-    ap.add_argument("--fp-tol", type=float, default=0.00010,
+    ap.add_argument("--fp-tol", type=float, default=0.0,
                     help="footprint ring simplification tolerance (degrees)")
     args = ap.parse_args()
     out: Path = args.out
@@ -215,7 +215,7 @@ def main() -> int:
     try:
         import urllib.request
         with urllib.request.urlopen(
-            "http://127.0.0.1:3320/api/properties?limit=400&offset=0", timeout=30
+            "http://127.0.0.1:{}?limit=400&offset=0", timeout=30
         ) as resp:
             page = json.loads(resp.read())
         table_rows = list(page.get("properties") or [])
@@ -223,7 +223,7 @@ def main() -> int:
         # Page through the rest so the baked table is complete.
         while len(table_rows) < table_total:
             with urllib.request.urlopen(
-                "http://127.0.0.1:3320/api/properties?"
+                "http://127.0.0.1:{}?"
                 f"limit=400&offset={len(table_rows)}", timeout=30,
             ) as resp:
                 page = json.loads(resp.read())
