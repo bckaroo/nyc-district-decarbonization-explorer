@@ -641,3 +641,10 @@ thead th:focus-visible { outline-offset: -2px; }
 .chip-warn { border-color: #facc15; color: #fde047; }
 .chip-mut { border-color: var(--border-soft); color: var(--muted); }
 .ll97-pane table td { cursor: pointer; }
+
+
+/* sortable headers */
+.th-sort { cursor: pointer; user-select: none; }
+.th-sort:hover { color: var(--accent); }
+.sort-arrow { font-size: 0.72em; color: var(--faint); }
+.sort-arrow.on { color: var(--accent); }

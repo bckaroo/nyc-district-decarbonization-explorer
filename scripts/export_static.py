@@ -155,10 +155,22 @@ def main() -> int:
         print("  WARN mappluto_lots.sqlite absent; building profiles not baked",
               file=sys.stderr)
 
+    # LL97 screening status per BBL (worst property on the lot wins) for the
+    # categorical map theme. Absent = not covered / not screened — never false-
+    # colored; the frontend paints those as no-data gray.
+    ll97_status: dict[str, str] = {}
+    _ll97_path = Path(
+        "/mnt/e/OC_Projects/projects/signalnyc/data/citywide/ll97_status_by_bbl.json"
+    )
+    if _ll97_path.exists():
+        ll97_status = json.loads(_ll97_path.read_text()).get("statuses") or {}
+        print(f"  ll97 status: {len(ll97_status):,} bbls")
+
     feats, buildings = [], {}
     for r in rows:
         props = {k: r[k] for k in FP_COLS}
         props["has_ll84"] = bool(props["has_ll84"])
+        props["ll97_status"] = ll97_status.get(str(props.get("bbl") or ""))
         feats.append({
             "type": "Feature",
             # Static build simplifies rings: a 1.08M-footprint city served by the

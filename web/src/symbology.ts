@@ -252,6 +252,15 @@ export function getModeledTheme(id: string): ModeledThemeDef | undefined {
 
 export const ALL_SELECTABLE_THEMES = [...OBSERVED_THEMES, ...MODELED_THEMES];
 
+/** Categorical LL97 status colors (matches Ll97Pane status chips). */
+export const LL97_STATUS_COLORS: Record<string, string> = {
+  "breach-now": "#f87171",       // red — over the 2024 limit
+  "breach-2030": "#facc15",      // yellow — 2024 ok, 2030 limit breach
+  "compliant": "#34d399",        // green — under both period limits
+  "no-consumption-data": "#94a3b8", // gray — filed but no usable fuel data
+};
+export const LL97_NO_DATA = "#4b5563"; // not covered / not screened (dark gray)
+
 /**
  * MapLibre paint expression for a theme: `case`-guarded interpolate ramp.
  * Null/missing → theme.nullGray (not zero, not dropped). Non-numeric junk
@@ -276,6 +285,24 @@ export function colorExpr(theme: ThemeDef): unknown {
     ["!=", ["typeof", ["get", theme.field]], "number"],
     theme.nullGray,
     ["interpolate", ["linear"], ["get", theme.field], ...ramp] as never,
+  ];
+}
+
+/** Categorical paint for the ll97_status theme (match on the string field). */
+export function ll97StatusColorExpr(): unknown {
+  const match: unknown[] = ["match", ["get", "ll97_status"]];
+  for (const [k, c] of Object.entries(LL97_STATUS_COLORS)) match.push(k, c);
+  match.push(LL97_NO_DATA);
+  return match;
+}
+
+export function ll97StatusLegend(): { color: string; text: string }[] {
+  return [
+    { color: LL97_STATUS_COLORS["breach-now"], text: "breaches 2024 limit" },
+    { color: LL97_STATUS_COLORS["breach-2030"], text: "2024 ok · 2030 breach" },
+    { color: LL97_STATUS_COLORS["compliant"], text: "compliant thru 2034" },
+    { color: LL97_STATUS_COLORS["no-consumption-data"], text: "no consumption data" },
+    { color: LL97_NO_DATA, text: "not covered / not screened" },
   ];
 }
 

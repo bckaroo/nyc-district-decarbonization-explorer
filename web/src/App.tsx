@@ -34,6 +34,7 @@ import {
   fetchLl97,
 } from "./ll97Table";
 import { Ll97Pane } from "./Ll97Pane";
+import { SortHead, useSorted, type SortState } from "./tableSort";
 
 type SortKey =
   | "address_1"
@@ -115,6 +116,7 @@ export default function App() {
   const [tableTab, setTableTab] = useState<"properties" | "districts" | "ll97">("properties");
   const [districtRows, setDistrictRows] = useState<DistrictPortfolioRow[] | null>(null);
   const [districtRowsErr, setDistrictRowsErr] = useState<string | null>(null);
+  const [districtSort, setDistrictSort] = useState<SortState | null>(null);
   // LL97 tab state: one row per property + a selected property's pathway chart.
   const [ll97Rows, setLl97Rows] = useState<Ll97Row[] | null>(null);
   const [ll97Err, setLl97Err] = useState<string | null>(null);
@@ -220,6 +222,31 @@ export default function App() {
       cancelled = true;
     };
   }, [tableTab, ll97Rows, ll97Err]);
+
+  // Sorting for the districts table (clickable column headers).
+  const districtRowsSorted = useSorted<DistrictPortfolioRow>(
+    districtRows,
+    districtSort,
+    (row, key) => {
+      switch (key) {
+        case "name": return row.name ?? null;
+        case "kind": return row.kind;
+        case "borough": return row.borough ?? null;
+        case "members": return row.members;
+        case "ll84_props": return row.ll84_props;
+        case "gfa_total": return row.gfa_total ?? null;
+        case "site_eui_median": return row.site_eui_median ?? null;
+        case "net_thermal_median": return row.net_thermal_median ?? null;
+        case "hcd": return (row.heating_dominant ?? 0) + (row.cooling_dominant ?? 0);
+        default: return null;
+      }
+    },
+  );
+  function toggleDistrictSort(key: string) {
+    setDistrictSort((prev) =>
+      prev && prev.key === key ? { key, asc: !prev.asc } : { key, asc: false },
+    );
+  }
 
   // Districts portfolio rows load on demand (tab switch), once.
   const districtRowsVisible = tableTab === "districts";
@@ -611,19 +638,19 @@ export default function App() {
                 <table>
                   <thead>
                     <tr>
-                      <th>District</th>
-                      <th>Type</th>
-                      <th className="num">Borough</th>
-                      <th className="num">Buildings</th>
-                      <th className="num">LL84 props</th>
-                      <th className="num">GFA ft²</th>
-                      <th className="num">Median EUI</th>
-                      <th className="num">Median net thermal</th>
-                      <th className="num">Heat / Cool</th>
+                      <SortHead label="District" sortKey="name" state={districtSort} onToggle={toggleDistrictSort} />
+                      <SortHead label="Type" sortKey="kind" state={districtSort} onToggle={toggleDistrictSort} />
+                      <SortHead label="Borough" sortKey="borough" state={districtSort} onToggle={toggleDistrictSort} />
+                      <SortHead label="Buildings" sortKey="members" state={districtSort} onToggle={toggleDistrictSort} num />
+                      <SortHead label="LL84 props" sortKey="ll84_props" state={districtSort} onToggle={toggleDistrictSort} num />
+                      <SortHead label="GFA ft²" sortKey="gfa_total" state={districtSort} onToggle={toggleDistrictSort} num />
+                      <SortHead label="Median EUI" sortKey="site_eui_median" state={districtSort} onToggle={toggleDistrictSort} num />
+                      <SortHead label="Median net thermal" sortKey="net_thermal_median" state={districtSort} onToggle={toggleDistrictSort} num />
+                      <SortHead label="Heat / Cool" sortKey="hcd" state={districtSort} onToggle={toggleDistrictSort} num />
                     </tr>
                   </thead>
                   <tbody>
-                    {districtRows.map((d) => (
+                    {districtRowsSorted.map((d) => (
                       <tr key={d.district_id}>
                         <td>{d.name}</td>
                         <td>

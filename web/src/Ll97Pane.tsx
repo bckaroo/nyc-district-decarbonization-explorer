@@ -4,6 +4,7 @@ import {
   type Ll97Row,
   pathway as ll97Pathway,
 } from "./ll97Table";
+import { SortHead, useSorted, type SortState } from "./tableSort";
 
 const fmtT = (v: number | null | undefined) =>
   v == null ? "—" : Math.round(v).toLocaleString();
@@ -79,8 +80,29 @@ export function Ll97Pane({ rows, err }: { rows: Ll97Row[] | null; err: string | 
   const [filter, setFilter] = useState<"all" | "breach-now" | "breach-2030" | "compliant">("all");
   const [selected, setSelected] = useState<Ll97Row | null>(null);
   const [q, setQ] = useState("");
+  const [sort, setSort] = useState<SortState | null>(null);
 
-  const shown = useMemo(() => {
+  function pick(r: Ll97Row, key: string): unknown {
+    switch (key) {
+      case "name": return r.name ?? null;
+      case "og": return r.occupancy_group;
+      case "gfa": return r.gfa;
+      case "e1": return r.emissions_t?.p1 ?? null;
+      case "l1": return r.limit_t?.p1 ?? null;
+      case "e2": return r.emissions_t?.p2 ?? null;
+      case "l2": return r.limit_t?.p2 ?? null;
+      case "pen": return r.penalty_est?.total ?? null;
+      case "status": return r.status;
+      default: return null;
+    }
+  }
+  function toggle(key: string) {
+    setSort((prev) =>
+      prev && prev.key === key ? { key, asc: !prev.asc } : { key, asc: false },
+    );
+  }
+
+  const shownRaw = useMemo(() => {
     if (!rows) return [];
     let list = rows;
     if (filter !== "all") list = list.filter((r) => r.status === filter);
@@ -94,6 +116,7 @@ export function Ll97Pane({ rows, err }: { rows: Ll97Row[] | null; err: string | 
     }
     return list;
   }, [rows, filter, q]);
+  const shown = useSorted(shownRaw, sort, pick);
 
   if (err) return <p className="empty">LL97 load failed: {err}</p>;
   if (!rows) return <p className="empty">Loading LL97 screening…</p>;
@@ -124,15 +147,15 @@ export function Ll97Pane({ rows, err }: { rows: Ll97Row[] | null; err: string | 
         <table>
           <thead>
             <tr>
-              <th>Property</th>
-              <th>Group</th>
-              <th className="num">GFA ft²</th>
-              <th className="num">Emissions 24-29 t</th>
-              <th className="num">Limit</th>
-              <th className="num">Emissions 30-34 t</th>
-              <th className="num">Limit</th>
-              <th className="num">Penalty est.</th>
-              <th>Status</th>
+              <SortHead label="Property" sortKey="name" state={sort} onToggle={toggle} />
+              <SortHead label="Group" sortKey="og" state={sort} onToggle={toggle} />
+              <SortHead label="GFA ft²" sortKey="gfa" state={sort} onToggle={toggle} num />
+              <SortHead label="Emissions 24-29 t" sortKey="e1" state={sort} onToggle={toggle} num />
+              <SortHead label="Limit" sortKey="l1" state={sort} onToggle={toggle} num />
+              <SortHead label="Emissions 30-34 t" sortKey="e2" state={sort} onToggle={toggle} num />
+              <SortHead label="Limit" sortKey="l2" state={sort} onToggle={toggle} num />
+              <SortHead label="Penalty est." sortKey="pen" state={sort} onToggle={toggle} num />
+              <SortHead label="Status" sortKey="status" state={sort} onToggle={toggle} />
             </tr>
           </thead>
           <tbody>

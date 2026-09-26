@@ -61,6 +61,21 @@ GEO_COLUMNS = ["fid", "bin", "bbl", "height_roof", "construction_year", "name"]
 MATCH_CAP = 20000
 
 
+_ll97_store: Ll97Store | None = None
+
+
+def ll97_status_of(bbl: str | None) -> str | None:
+    """Worst LL97 screening status for a BBL (lazy-loaded side-car)."""
+    global _ll97_store
+    if _ll97_store is None:
+        sidecar = DB_PATH.parent / "ll97_status_by_bbl.json"
+        if sidecar.exists():
+            _ll97_store = Ll97Store(sidecar)
+        else:
+            return None
+    return _ll97_store.get(bbl)
+
+
 class FootprintStore:
     """Read-only bbox queries over citywide footprints (thread-safe)."""
 
@@ -189,6 +204,7 @@ class FootprintStore:
         for r in rows:
             props = {k: r[k] for k in GEO_COLUMNS}
             props["has_ll84"] = bool(r["has_ll84"])
+            props["ll97_status"] = ll97_status_of(r["bbl"])
             for k in ENERGY_COLUMNS + MODELED_COLUMNS:
                 props[k] = r[k]
             feats.append(
@@ -212,6 +228,7 @@ class FootprintStore:
             return None
         props = {k: r[k] for k in GEO_COLUMNS}
         props["has_ll84"] = bool(r["has_ll84"])
+        props["ll97_status"] = ll97_status_of(r["bbl"])
         for k in ENERGY_COLUMNS + MODELED_COLUMNS:
             props[k] = r[k]
         return {
@@ -240,6 +257,7 @@ class FootprintStore:
             return None
         props = {k: r[k] for k in GEO_COLUMNS}
         props["has_ll84"] = bool(r["has_ll84"])
+        props["ll97_status"] = ll97_status_of(r["bbl"])
         for k in ENERGY_COLUMNS + MODELED_COLUMNS:
             props[k] = r[k]
         return {
@@ -247,6 +265,33 @@ class FootprintStore:
             "geometry": json.loads(r["geom"]),
             "properties": props,
         }
+
+
+class Ll97Store:
+    """bbl → LL97 Article 320 screening status (worst property on the lot).
+
+    Serves the map's LL97 status color theme. Loaded once at startup from the
+    small side-car JSON produced alongside build_ll97_compliance.py; a BBL
+    without a screening row is simply absent (not covered / no data — never
+    colored as compliant).
+    """
+
+    def __init__(self, path: str | Path):
+        self._path = Path(path)
+        self._lock = threading.Lock()
+        self._map: dict[str, str] | None = None
+
+    def _load(self) -> dict[str, str]:
+        with self._lock:
+            if self._map is None:
+                data = json.loads(self._path.read_text())
+                self._map = data.get("statuses") or {}
+        return self._map
+
+    def get(self, bbl: str | None) -> str | None:
+        if not bbl:
+            return None
+        return self._load().get(bbl)
 
 
 class PlutoStore:

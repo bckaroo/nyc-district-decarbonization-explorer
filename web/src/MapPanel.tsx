@@ -7,6 +7,8 @@ import {
   MODELED_THEMES,
   UNAVAILABLE_THEMES,
   colorExpr,
+  ll97StatusColorExpr,
+  ll97StatusLegend,
   getTheme,
   legendSwatches,
   opacityExpr,
@@ -136,7 +138,8 @@ export default function MapPanel({
   >(null);
   const [districtsVisible, setDistrictsVisible] = useState(false);
   const [mapFullscreen, setMapFullscreen] = useState(false);
-  const theme = getTheme(themeId) ?? OBSERVED_THEMES[0];
+  const isLl97Theme = themeId === "ll97_status";
+  const theme = getTheme(isLl97Theme ? OBSERVED_THEMES[0].id : themeId) ?? OBSERVED_THEMES[0];
   propsRef.current = { properties, selectedId, theme };
 
   // Reapply the active theme's paint expressions when the user switches layers.
@@ -144,13 +147,19 @@ export default function MapPanel({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.getLayer("fp-fill")) return;
-    map.setPaintProperty("fp-fill", "fill-color", colorExpr(theme) as never);
+    map.setPaintProperty(
+      "fp-fill",
+      "fill-color",
+      (isLl97Theme
+        ? ll97StatusColorExpr()
+        : colorExpr(theme) as never) as never
+    );
     map.setPaintProperty(
       "fp-fill",
       "fill-opacity",
       opacityExpr(theme, propsRef.current.selectedId) as never
     );
-  }, [themeId, theme]);
+  }, [themeId, theme, isLl97Theme]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
@@ -829,6 +838,9 @@ export default function MapPanel({
             value={themeId}
             onChange={(e) => onThemeChange(e.target.value)}
           >
+            <optgroup label="Compliance screening">
+              <option value="ll97_status">LL97 status — Article 320 screening</option>
+            </optgroup>
             <optgroup label="Observed (LL84 reported)">
               {OBSERVED_THEMES.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -854,30 +866,56 @@ export default function MapPanel({
             )}
           </select>
           <div className="symbology-legend" data-testid="symbology-legend">
-            <span className="legend-title">
-              {theme.label} <span className="legend-units">({theme.units})</span>
-            </span>
-            <div className="legend-row">
-              {legendSwatches(theme).map((s) => (
-                <span key={s.text} className="legend-stop">
-                  <span className="swatch" style={{ background: s.color }} />
-                  {s.text}
+            {isLl97Theme ? (
+              <>
+                <span className="legend-title">
+                  LL97 screening status
+                  <span className="legend-units">(Article 320)</span>
                 </span>
-              ))}
-              <span className="legend-stop">
-                <span className="swatch" style={{ background: theme.nullGray }} />
-                no data
-              </span>
-            </div>
-            {"modelNote" in theme && (theme as { modelNote?: string }).modelNote && (
-              <span className="legend-modelnote">
-                {(theme as { modelNote: string }).modelNote}
-              </span>
+                <div className="legend-row">
+                  {ll97StatusLegend().map((s) => (
+                    <span key={s.text} className="legend-stop">
+                      <span className="swatch" style={{ background: s.color }} />
+                      {s.text}
+                    </span>
+                  ))}
+                </div>
+                <span className="legend-modelnote">
+                  Property-level screening mapped to footprints by BBL; a lot
+                  with several reporting properties shows its worst status.
+                  Screening only, not a compliance determination.
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="legend-title">
+                  {theme.label} <span className="legend-units">({theme.units})</span>
+                </span>
+                <div className="legend-row">
+                  {legendSwatches(theme).map((s) => (
+                    <span key={s.text} className="legend-stop">
+                      <span className="swatch" style={{ background: s.color }} />
+                      {s.text}
+                    </span>
+                  ))}
+                  <span className="legend-stop">
+                    <span className="swatch" style={{ background: theme.nullGray }} />
+                    no data
+                  </span>
+                </div>
+                {("modelNote" in theme) && (theme as { modelNote?: string }).modelNote && (
+                  <span className="legend-modelnote">
+                    {(theme as { modelNote: string }).modelNote}
+                  </span>
+                )}
+              </>
             )}
           </div>
           <div className="symbology-grain">
-            {theme.grain}
-            {theme.disaggregated
+            {isLl97Theme
+              ? "Rows are one reporting property from LL84 — footprints carry it by BBL; campus totals are NOT split across buildings. Not covered / not screened lots stay gray."
+              : theme.grain}
+            {!isLl97Theme && theme.disaggregated
               ? " · multi-building property totals already area-weighted to each footprint"
               : ""}
             {theme.weatherNormalized ? " · weather-normalized" : ""}
