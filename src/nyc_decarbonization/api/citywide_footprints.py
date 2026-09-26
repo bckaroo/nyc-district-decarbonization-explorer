@@ -247,3 +247,42 @@ class FootprintStore:
             "geometry": json.loads(r["geom"]),
             "properties": props,
         }
+
+
+class PlutoStore:
+    """MapPLUTO attribute-only lookups keyed by BBL (building profile panel).
+
+    Serves owner type/name, assessed value (land/total/exempt), landmark
+    status, community district, ZIP, and self-reported address. Attribute-only
+    by design: no geometry here, the footprint layer already dominates the
+    click path. A missing BBL is a legitimate answer (condo lots, odd records)
+    — the endpoint reports `pluto: null` rather than failing the profile.
+    """
+
+    COLUMNS = (
+        "borough", "block", "lot", "lot_area", "bldg_area", "built_far",
+        "num_bldgs", "num_floors", "year_built", "land_use", "bldg_class",
+        "zone_dist1", "zone_dist2", "ownertype", "ownername",
+        "assess_land", "assess_total", "exempt_total", "landmark",
+        "condo_no", "cd", "zip_code", "address",
+    )
+
+    def __init__(self, path: str | Path):
+        self.path = Path(path)
+        self._lock = threading.Lock()
+
+    def _connect(self) -> sqlite3.Connection:
+        db = sqlite3.connect(f"file:{self.path}?mode=ro", uri=True)
+        db.row_factory = sqlite3.Row
+        return db
+
+    def by_bbl(self, bbl: str) -> dict | None:
+        with self._lock:
+            db = self._connect()
+            r = db.execute(
+                f"SELECT {', '.join(self.COLUMNS)} FROM lots WHERE bbl=?",
+                (bbl,),
+            ).fetchone()
+        if r is None:
+            return None
+        return {k: r[k] for k in self.COLUMNS}

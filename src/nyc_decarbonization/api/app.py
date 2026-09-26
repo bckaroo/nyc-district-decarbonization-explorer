@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
@@ -195,12 +196,13 @@ def create_app(
 
     # ---- citywide ParcelStore (MapPLUTO + citywide LL84 join) -----------------
     from .citywide_parcels import ParcelStore
-    from .citywide_footprints import FootprintStore
+    from .citywide_footprints import FootprintStore, PlutoStore
     from .citywide_demand import DemandStore
 
     _citywide_store: ParcelStore | None = None
     _footprint_store: FootprintStore | None = None
     _demand_store_ref: DemandStore | None = None
+    _pluto_store: PlutoStore | None = None
 
     def _parcel_store() -> ParcelStore:
         nonlocal _citywide_store
@@ -213,6 +215,14 @@ def create_app(
         if _footprint_store is None:
             _footprint_store = FootprintStore()
         return _footprint_store
+
+    def _pluto() -> PlutoStore:
+        nonlocal _pluto_store
+        if _pluto_store is None:
+            _pluto_store = PlutoStore(
+                "/mnt/e/OC_Projects/projects/signalnyc/data/citywide/mappluto_lots.sqlite"
+            )
+        return _pluto_store
 
     def _demand_store() -> DemandStore:
         nonlocal _demand_store_ref
@@ -366,10 +376,19 @@ def create_app(
         except FileNotFoundError:
             modeled = None
 
+        # Building profile: parcel attributes (owner/value/vintage/zoning) —
+        # map-grain, honest about absence (pluto: null on odd BBLs).
+        pluto = None
+        try:
+            pluto = _pluto().by_bbl(bbl)
+        except sqlite3.Error:
+            pluto = None
+
         return {
             "bbl": bbl,
             "bin": bin_id,
             "geometry": rec.get("geometry"),
+            "pluto": pluto,
             "footprint": {
                 k: props.get(k)
                 for k in (

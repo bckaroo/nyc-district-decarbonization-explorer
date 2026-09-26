@@ -56,9 +56,36 @@ export interface ModeledDemandSummary {
 }
 
 /** Everything known about one building, keyed by BBL (map-click entry point). */
+export interface PlutoProfile {
+  borough: string | null;
+  block: string | null;
+  lot: string | null;
+  lot_area: number | null;
+  bldg_area: number | null;
+  built_far: number | null;
+  num_bldgs: number | null;
+  num_floors: number | null;
+  year_built: number | null;
+  land_use: string | null;
+  bldg_class: string | null;
+  zone_dist1: string | null;
+  zone_dist2: string | null;
+  ownertype: string | null;
+  ownername: string | null;
+  assess_land: number | null;
+  assess_total: number | null;
+  exempt_total: number | null;
+  landmark: string | null;
+  condo_no: string | null;
+  cd: number | null;
+  zip_code: string | null;
+  address: string | null;
+}
+
 export interface BuildingDetail {
   bbl: string;
   bin: string | null;
+  pluto: PlutoProfile | null;
   footprint: {
     name: string | null;
     height_roof: number | null;

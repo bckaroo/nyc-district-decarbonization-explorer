@@ -630,3 +630,5 @@ thead th:focus-visible { outline-offset: -2px; }
   line-height: 1.35;
   color: var(--warn, #fbbf24);
 }
+
+.dossier-mini { color: var(--faint); font-size: 0.9em; margin-left: 4px; }

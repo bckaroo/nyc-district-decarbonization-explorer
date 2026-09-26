@@ -46,6 +46,30 @@ const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "natural_gas_kbtu", label: "Natural gas (kBtu)" },
 ];
 
+
+
+const PLUTO_LAND_USE: Record<string, string> = {
+  "1": "1–2 family", "2": "multi-family walk-up", "3": "multi-family elevator",
+  "4": "mixed residential/commercial", "5": "commercial/office",
+  "6": "industrial/manufacturing", "7": "transportation/utility",
+  "8": "public facilities/institutions", "9": "open space/recreation",
+  "10": "parking", "11": "vacant",
+};
+const PLUTO_OWNER_TYPE: Record<string, string> = {
+  P: "private", C: "city", X: "other public", O: "public authority",
+  M: "mixed city/private", U: "state", F: "federal",
+  R: "private (housing dev co)", N: "private (condo)", H: "private (co-op rented)",
+};
+function plutoLandUse(code: string | null): string {
+  if (!code) return "—";
+  const k = code.replace(/^0/, "") || code;
+  return `${PLUTO_LAND_USE[k] ?? code} (${k})`;
+}
+function plutoOwnerType(code: string | null): string {
+  if (!code) return "—";
+  return PLUTO_OWNER_TYPE[code] ?? code;
+}
+
 function fmtCell(v: number | null): string {
   if (v === null || !Number.isFinite(v)) return "—";
   return v.toLocaleString("en-US", {
@@ -646,7 +670,48 @@ export default function App() {
                 <dd>{fmtCell(building.footprint.construction_year)}</dd>
                 <dt>Roof height</dt>
                 <dd>{fmtCell(building.footprint.height_roof)} ft</dd>
+                <dt>Footprint area</dt>
+                <dd>{fmtCell(building.footprint.shape_area)} ft²</dd>
               </dl>
+              <h3 className="dossier-sub">Building profile (MapPLUTO)</h3>
+              {building.pluto ? (
+                <dl>
+                  <dt>Land use</dt><dd>{plutoLandUse(building.pluto.land_use)}</dd>
+                  <dt>Building class</dt><dd>{building.pluto.bldg_class ?? "—"}</dd>
+                  <dt>Owner type</dt><dd>{plutoOwnerType(building.pluto.ownertype)}</dd>
+                  <dt>Owner</dt><dd>{building.pluto.ownername ?? "—"}</dd>
+                  <dt>Assessed value</dt>
+                  <dd>{building.pluto.assess_total == null ? "—" : "$" + Math.round(building.pluto.assess_total).toLocaleString()}
+                    {building.pluto.assess_land != null && (
+                      <span className="dossier-mini"> · land ${Math.round(building.pluto.assess_land).toLocaleString()}</span>
+                    )}
+                  </dd>
+                  <dt>Exempt value</dt>
+                  <dd>{building.pluto.exempt_total == null ? "—" : "$" + Math.round(building.pluto.exempt_total).toLocaleString()}</dd>
+                  <dt>Zoning</dt>
+                  <dd>{[building.pluto.zone_dist1, building.pluto.zone_dist2].filter(Boolean).join(" · ") || "—"}</dd>
+                  <dt>Lot / bldg area</dt>
+                  <dd>
+                    {building.pluto.lot_area == null ? "—" : Math.round(building.pluto.lot_area).toLocaleString()} ft² /{" "}
+                    {building.pluto.bldg_area == null ? "—" : Math.round(building.pluto.bldg_area).toLocaleString()} ft²
+                    {building.pluto.built_far != null && (
+                      <span className="dossier-mini"> · FAR {building.pluto.built_far.toFixed(2)}</span>
+                    )}
+                  </dd>
+                  <dt>Structure</dt>
+                  <dd>
+                    {building.pluto.num_bldgs ?? "—"} bldg(s) · {building.pluto.num_floors ?? "—"} floors
+                  </dd>
+                  <dt>Community district</dt><dd>{building.pluto.cd ?? "—"}</dd>
+                  <dt>Address</dt><dd>{building.pluto.address ?? "—"} {(building.pluto.zip_code) && <span className="dossier-mini">{building.pluto.zip_code}</span>}</dd>
+                  <dt>Landmark</dt><dd>{building.pluto.landmark ?? "—"}</dd>
+                  <dt>Condo flag</dt><dd>{building.pluto.condo_no ?? "—"}</dd>
+                </dl>
+              ) : (
+                <p className="dossier-note">
+                  No MapPLUTO record for this BBL (condo lot or unmapped parcel).
+                </p>
+              )}
               <h3 className="dossier-sub">Observed (LL84)</h3>
               {building.observed ? (
                 <dl>
