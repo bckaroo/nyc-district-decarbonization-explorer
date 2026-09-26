@@ -63,3 +63,30 @@ project **PROJ-026**). New entries go at the top.
 - Promoted to private GitHub remote bckaroo/signalnyc (main, all commits
   pushed, doctor: OK, 0 dirty, 0 unpushed).
 - Tests 63/63. Live on :3320 (tailscale serve active).
+
+## Roadmap note — 2026-09-25 (Andrew)
+
+What we have right now is a **demand model**: annual heating/DHW/cooling
+demand per footprint, net thermal, evidence-tiered. Useful for screening, but
+it is only one side of the ledger. Two new layers are needed:
+
+1. **Thermal generation layer (supply side).** Anchor loads and sources that
+   could serve as generation/distribution anchors for district thermal
+   networks:
+   - hospitals
+   - data centers (large, always-on thermal loads)
+   - subway infrastructure — tunnels and underground stations (ventilation
+     heat rejection, station heating demand)
+   - wastewater treatment plants (sewage-heat-recovery potential)
+   - etc. — other large thermal anchors to be identified as we go.
+
+2. **Borehole / GSHX opportunity layer.** Open surfaces suitable for ground
+   heat exchanger drilling fields:
+   - parking lots
+   - plazas
+   - parks
+   - other open space
+
+Neither layer exists yet — both need source data identification and a
+scoring/siting methodology before build. Eligibility screening (air quality,
+distance to demand, load coherence) comes after the raw layers land.
