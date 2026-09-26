@@ -36,6 +36,7 @@ REPO = Path(__file__).resolve().parents[1]
 DATA = REPO / "data" / "citywide"
 FP_DB = DATA / "footprints_citywide.sqlite"
 DEMAND_DB = DATA / "annual_demand_citywide" / "annual_demand_citywide.sqlite"
+PLUTO_DB = DATA / "mappluto_lots.sqlite"
 
 # Columns the map/table/dossier actually consume. Explicit so a schema addition
 # is a deliberate decision about what gets published. The observed LL84 columns
@@ -89,6 +90,17 @@ def simplify_geom(geom, tol, ndigits=5):
                             for poly in geom["coordinates"]]}
 
 
+
+# Profile fields copied attribute-only from the MapPLUTO lots DB (bbl-keyed).
+# Absent BBLs stay None — condo lots / unmapped parcels, not zeros.
+PLUTO_PROFILE_COLS = (
+    "borough", "block", "lot", "lot_area", "bldg_area", "built_far",
+    "num_bldgs", "num_floors", "year_built", "land_use", "bldg_class",
+    "zone_dist1", "zone_dist2", "ownertype", "ownername",
+    "assess_land", "assess_total", "exempt_total", "landmark",
+    "condo_no", "cd", "zip_code", "address",
+)
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True, type=Path)
@@ -128,6 +140,21 @@ def main() -> int:
         "WHERE net_thermal_kbtu_ft2_yr IS NOT NULL ORDER BY fid"
     ).fetchall()
 
+    pluto_by_bbl: dict[str, dict] = {}
+    if PLUTO_DB.exists():
+        pcon = sqlite3.connect(f"file:{PLUTO_DB}?mode=ro", uri=True)
+        pcon.row_factory = sqlite3.Row
+        cols = [r[1] for r in pcon.execute("PRAGMA table_info(lots)")]
+        have = [c for c in PLUTO_PROFILE_COLS if c in cols]
+        if have:
+            for row in pcon.execute(f"SELECT bbl, {', '.join(have)} FROM lots"):
+                pluto_by_bbl[str(row["bbl"])] = {c: row[c] for c in have}
+        pcon.close()
+        print(f"  pluto profiles: {len(pluto_by_bbl):,} lots")
+    else:
+        print("  WARN mappluto_lots.sqlite absent; building profiles not baked",
+              file=sys.stderr)
+
     feats, buildings = [], {}
     for r in rows:
         props = {k: r[k] for k in FP_COLS}
@@ -145,6 +172,7 @@ def main() -> int:
         buildings[props["bbl"]] = {
             "bbl": props["bbl"],
             "bin": props["bin"],
+            "pluto": pluto_by_bbl.get(props["bbl"]),
             "footprint": {
                 "name": props["name"],
                 "height_roof": props["height_roof"],
